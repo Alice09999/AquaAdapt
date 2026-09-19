@@ -4,9 +4,6 @@ import { EventLogItem } from '../../types';
 
 export const AiMonitorView: React.FC = () => {
   const [detectionEnabled, setDetectionEnabled] = useState<boolean>(true);
-  const [temp, setTemp] = useState<number>(28.4);
-  const [ph, setPh] = useState<number>(7.2);
-  const [doLevel, setDoLevel] = useState<number>(6.8);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Initial event logs matching screenshot exactly
@@ -128,16 +125,8 @@ export const AiMonitorView: React.FC = () => {
 
     render();
 
-    // Jitter telemetry slightly for realism
-    const interval = setInterval(() => {
-      setTemp((prev) => +(28.4 + (Math.random() * 0.4 - 0.2)).toFixed(1));
-      setPh((prev) => +(7.2 + (Math.random() * 0.2 - 0.1)).toFixed(1));
-      setDoLevel((prev) => +(6.8 + (Math.random() * 0.2 - 0.1)).toFixed(1));
-    }, 4000);
-
     return () => {
       cancelAnimationFrame(animationFrameId);
-      clearInterval(interval);
     };
   }, []);
 
@@ -223,12 +212,6 @@ export const AiMonitorView: React.FC = () => {
               <span className="font-bold tracking-wider text-slate-100">
                 POND A7 FEEDING ZONE
               </span>
-              <span className="text-slate-500">|</span>
-              <span>TEMP: {temp}°C</span>
-              <span className="text-slate-500">|</span>
-              <span>PH: {ph}</span>
-              <span className="text-slate-500">|</span>
-              <span>DO: {doLevel} mg/L</span>
             </div>
             <div className="text-[10px] text-sky-400 uppercase tracking-widest font-semibold hidden sm:block">
               AI ENGINE: YOLO-AQUA v8.4

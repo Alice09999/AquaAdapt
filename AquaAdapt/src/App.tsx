@@ -22,10 +22,10 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
+  const [scheduleRefreshKey, setScheduleRefreshKey] = useState<number>(0);
 
-  const handleSaveSchedule = (newSched: { id: string; type: 'Interval Tetap' | 'Berbasis AI'; time: string; days: string[] }) => {
-    // Saved schedule feedback
-    console.log('Jadwal baru disimpan:', newSched);
+  const handleScheduleCreated = () => {
+    setScheduleRefreshKey((k) => k + 1);
   };
 
   return (
@@ -75,6 +75,7 @@ export default function App() {
           {activeTab === 'scheduler' && (
             <SchedulerView
               onOpenNewScheduleModal={() => setIsNewScheduleModalOpen(true)}
+              refreshKey={scheduleRefreshKey}
             />
           )}
           {activeTab === 'hardware' && <HardwareView />}
@@ -92,7 +93,7 @@ export default function App() {
       <NewScheduleModal
         isOpen={isNewScheduleModalOpen}
         onClose={() => setIsNewScheduleModalOpen(false)}
-        onSaveSchedule={handleSaveSchedule}
+        onScheduleCreated={handleScheduleCreated}
       />
 
       <SettingsModal

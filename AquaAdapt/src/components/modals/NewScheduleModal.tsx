@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
-import { X, Calendar, Plus } from 'lucide-react';
+import { X, Calendar, Plus, Loader2 } from 'lucide-react';
+
+const API_BASE = 'http://localhost/smart-feeder/api';
 
 interface NewScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveSchedule: (newSched: { id: string; type: 'Interval Tetap' | 'Berbasis AI'; time: string; days: string[] }) => void;
+  onScheduleCreated: () => void;
 }
 
 export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
   isOpen,
   onClose,
-  onSaveSchedule,
+  onScheduleCreated,
 }) => {
   const [scheduleType, setScheduleType] = useState<'Interval Tetap' | 'Berbasis AI'>('Interval Tetap');
   const [time, setTime] = useState<string>('07:00');
   const [selectedDays, setSelectedDays] = useState<string[]>(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat']);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const daysList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
   if (!isOpen) return null;
@@ -27,17 +31,41 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const randomNum = Math.floor(100 + Math.random() * 900);
-    const newId = scheduleType === 'Interval Tetap' ? `#F-${randomNum}` : `#A-${randomNum}`;
-    onSaveSchedule({
-      id: newId,
-      type: scheduleType,
-      time,
-      days: selectedDays,
-    });
-    onClose();
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/feeding_schedules.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          device_id: 'AI-001',
+          schedule_type: scheduleType,
+          feeding_time: time,
+          active_days: selectedDays,
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.message || `HTTP ${res.status}`);
+      }
+
+      const json = await res.json();
+      if (json.success) {
+        onScheduleCreated();
+        onClose();
+      } else {
+        throw new Error(json.message || 'Gagal menyimpan jadwal');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal menyimpan jadwal';
+      setSubmitError(message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -59,7 +87,12 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Tipe Jadwal */}
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md text-xs text-red-700 font-mono-code">
+              {submitError}
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono-code">
               TIPE PROTOKOL
@@ -90,7 +123,6 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
             </div>
           </div>
 
-          {/* Jam Pelaksanaan */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono-code">
               WAKTU PEMBERIAN (WIB)
@@ -104,7 +136,6 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
             />
           </div>
 
-          {/* Hari Aktif */}
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono-code">
               HARI AKTIF
@@ -134,16 +165,22 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
+              disabled={submitting}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-40"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-md text-white bg-[#0ea5e9] hover:bg-sky-600 transition-colors flex items-center gap-1.5 shadow-xs"
+              disabled={submitting}
+              className="px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-md text-white bg-[#0ea5e9] hover:bg-sky-600 transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-40"
             >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>Simpan Jadwal</span>
+              {submitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4 stroke-[3]" />
+              )}
+              <span>{submitting ? 'Menyimpan...' : 'Simpan Jadwal'}</span>
             </button>
           </div>
         </form>

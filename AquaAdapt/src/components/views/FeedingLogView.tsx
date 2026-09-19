@@ -1,30 +1,49 @@
-import React, { useState } from 'react';
-import { Cpu, Download, Check, Power, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-import { FeedingRecord } from '../../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Cpu, Download, Check, Power, ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { FeedingLogItem } from '../../types';
+
+const API_BASE = 'http://localhost/smart-feeder/api';
 
 export const FeedingLogView: React.FC = () => {
   const [dateRange, setDateRange] = useState<string>('7 Hari Terakhir');
   const [statusFilter, setStatusFilter] = useState<string>('Semua Catatan');
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  // Feeding records
-  const allRecords: FeedingRecord[] = [
-    { id: '1', timestamp: '2023-10-27 17:00:00', aiDecision: 'Hungry', status: 'ON' },
-    { id: '2', timestamp: '2023-10-27 07:00:00', aiDecision: 'FULL', status: 'OFF' },
-    { id: '3', timestamp: '2023-10-26 17:00:00', aiDecision: 'Hungry', status: 'ON' },
-    { id: '4', timestamp: '2023-10-26 07:00:00', aiDecision: 'FULL', status: 'OFF' },
-    { id: '5', timestamp: '2023-10-25 17:00:00', aiDecision: 'Hungry', status: 'ON' },
-    { id: '6', timestamp: '2023-10-25 07:00:00', aiDecision: 'FULL', status: 'OFF' },
-    { id: '7', timestamp: '2023-10-24 17:00:00', aiDecision: 'Hungry', status: 'ON' },
-    { id: '8', timestamp: '2023-10-24 07:00:00', aiDecision: 'FULL', status: 'OFF' },
-    { id: '9', timestamp: '2023-10-23 17:00:00', aiDecision: 'Hungry', status: 'ON' },
-    { id: '10', timestamp: '2023-10-23 07:00:00', aiDecision: 'FULL', status: 'OFF' },
-  ];
+  const [allRecords, setAllRecords] = useState<FeedingLogItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalFromServer, setTotalFromServer] = useState<number>(0);
+
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/feeding_logs.php?limit=200&offset=0`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setAllRecords(json.data);
+        setTotalFromServer(json.pagination?.total ?? json.data.length);
+      } else {
+        throw new Error(json.message || 'Gagal memuat data');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal mengambil data dari server';
+      setError(message);
+      setAllRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   // Filtering
   const filteredRecords = allRecords.filter((rec) => {
-    if (statusFilter === 'Hanya ON (Hungry)') return rec.status === 'ON';
-    if (statusFilter === 'Hanya OFF (FULL)') return rec.status === 'OFF';
+    if (statusFilter === 'Hanya ON (Hungry)') return rec.motor_status === 'ON';
+    if (statusFilter === 'Hanya OFF (FULL)') return rec.motor_status === 'OFF';
     return true;
   });
 
@@ -36,7 +55,7 @@ export const FeedingLogView: React.FC = () => {
   const handleExportCSV = () => {
     const headers = 'TANGGAL / WAKTU (WIB),KEPUTUSAN AI,STATUS\n';
     const rows = filteredRecords
-      .map((r) => `"${r.timestamp}","${r.aiDecision}","${r.status}"`)
+      .map((r) => `"${r.started_at}","${r.ai_decision}","${r.motor_status}"`)
       .join('\n');
     const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -134,7 +153,8 @@ export const FeedingLogView: React.FC = () => {
         <button
           id="btn-export-csv"
           onClick={handleExportCSV}
-          className="inline-flex items-center gap-2 border border-sky-400 text-sky-600 hover:bg-sky-50 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-colors shadow-2xs cursor-pointer"
+          disabled={loading || allRecords.length === 0}
+          className="inline-flex items-center gap-2 border border-sky-400 text-sky-600 hover:bg-sky-50 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-colors shadow-2xs cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
         >
           <Download className="w-3.5 h-3.5 stroke-[2.5]" />
           <span>EKSPOR CSV</span>
@@ -143,62 +163,102 @@ export const FeedingLogView: React.FC = () => {
 
       {/* Main Table */}
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-xs">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-slate-200 bg-slate-50/40 text-[11px] font-bold text-slate-700 uppercase tracking-wider font-mono-code">
-              <th className="py-3.5 px-6">TANGGAL / WAKTU (WIB)</th>
-              <th className="py-3.5 px-6">KEPUTUSAN AI</th>
-              <th className="py-3.5 px-6">STATUS</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-xs font-mono-code">
-            {displayedRecords.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
-                <td className="py-4 px-6 text-slate-800 font-medium">
-                  {item.timestamp}
-                </td>
-                <td className="py-4 px-6 font-semibold text-slate-900">
-                  {item.aiDecision}
-                </td>
-                <td className="py-4 px-6">
-                  {item.status === 'ON' ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-sky-50 text-sky-600 border border-sky-300">
-                      <Check className="w-3 h-3 stroke-[3]" />
-                      <span>ON</span>
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-300">
-                      <Power className="w-3 h-3 stroke-[2.5]" />
-                      <span>OFF</span>
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-16 gap-3 text-slate-500">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="text-sm font-mono-code">Memuat data riwayat pakan...</span>
+          </div>
+        )}
 
-        {/* Table Footer / Pagination */}
-        <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-mono-code bg-slate-50/30">
-          <span>Menampilkan 1-{displayedRecords.length} dari 142 data</span>
-
-          <div className="flex items-center gap-2">
+        {/* Error State */}
+        {!loading && error && (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <p className="text-sm text-red-600 font-mono-code font-medium">Gagal memuat data</p>
+            <p className="text-xs text-slate-500 font-mono-code">{error}</p>
             <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+              onClick={fetchLogs}
+              className="mt-2 px-4 py-2 text-xs font-bold text-sky-600 border border-sky-300 rounded-md hover:bg-sky-50 transition-colors cursor-pointer"
             >
-              <ChevronLeft className="w-4 h-4 text-slate-600" />
-            </button>
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage >= totalPages}
-              className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
-            >
-              <ChevronRight className="w-4 h-4 text-slate-600" />
+              Coba Lagi
             </button>
           </div>
-        </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && allRecords.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <p className="text-sm text-slate-500 font-mono-code font-medium">Belum ada data riwayat pakan</p>
+            <p className="text-xs text-slate-400 font-mono-code">Data akan muncul setelah ada event pemberian pakan tercatat.</p>
+          </div>
+        )}
+
+        {/* Data Table */}
+        {!loading && !error && allRecords.length > 0 && (
+          <>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/40 text-[11px] font-bold text-slate-700 uppercase tracking-wider font-mono-code">
+                  <th className="py-3.5 px-6">TANGGAL / WAKTU (WIB)</th>
+                  <th className="py-3.5 px-6">KEPUTUSAN AI</th>
+                  <th className="py-3.5 px-6">STATUS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs font-mono-code">
+                {displayedRecords.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="py-4 px-6 text-slate-800 font-medium">
+                      {item.started_at}
+                    </td>
+                    <td className="py-4 px-6 font-semibold text-slate-900">
+                      {item.ai_decision}
+                    </td>
+                    <td className="py-4 px-6">
+                      {item.motor_status === 'ON' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-sky-50 text-sky-600 border border-sky-300">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                          <span>ON</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-300">
+                          <Power className="w-3 h-3 stroke-[2.5]" />
+                          <span>OFF</span>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Table Footer / Pagination */}
+            <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-mono-code bg-slate-50/30">
+              <span>
+                Menampilkan {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredRecords.length)} dari {filteredRecords.length} data
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4 text-slate-600" />
+                </button>
+                <span className="text-slate-600 font-semibold">
+                  {currentPage} / {totalPages || 1}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4 text-slate-600" />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
