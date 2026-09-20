@@ -44,3 +44,14 @@ CREATE TABLE IF NOT EXISTS `feeding_schedules` (
   KEY `idx_feeding_schedules_device_id` (`device_id`),
   CONSTRAINT `fk_feeding_schedules_device` FOREIGN KEY (`device_id`) REFERENCES `ai_devices` (`device_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabel pc_monitor
+CREATE TABLE IF NOT EXISTS `pc_monitor` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `device_id` varchar(50) NOT NULL,
+  `cpu_usage` float DEFAULT NULL,
+  `ram_usage` float DEFAULT NULL,
+  `cpu_temp` float DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

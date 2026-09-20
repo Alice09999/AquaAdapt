@@ -2,13 +2,26 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Cpu, Video, Settings2 } from 'lucide-react';
 import { TerminalLog } from '../../types';
 
+const API_BASE = 'http://localhost/smart-feeder/api';
+
+interface PcMonitorData {
+  id: number;
+  device_id: string;
+  cpu_usage: number | null;
+  ram_usage: number | null;
+  cpu_temp: number | null;
+  created_at: string;
+}
+
 export const HardwareView: React.FC = () => {
-  const [cpuTemp, setCpuTemp] = useState<number>(42.5);
+  const [cpuTemp, setCpuTemp] = useState<number | null>(null);
+  const [ramUsage, setRamUsage] = useState<number | null>(null);
   const [gpuTemp, setGpuTemp] = useState<number>(45.1);
   const [fps, setFps] = useState<number>(60.0);
   const [rpm, setRpm] = useState<number>(1450);
   const [voltage, setVoltage] = useState<number>(12.4);
   const [motorLoad, setMotorLoad] = useState<number>(42);
+  const [loading, setLoading] = useState(true);
 
   // Terminal state
   const [logs, setLogs] = useState<TerminalLog[]>([
@@ -21,66 +34,32 @@ export const HardwareView: React.FC = () => {
   const [cmdInput, setCmdInput] = useState<string>('');
   const terminalEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Subtle real-time sensor fluctuation
+  // Fetch pc_monitor data from database (polling setiap 5 detik)
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCpuTemp((prev) => +(42.5 + (Math.random() * 0.4 - 0.2)).toFixed(1));
-      setGpuTemp((prev) => +(45.1 + (Math.random() * 0.4 - 0.2)).toFixed(1));
-      setFps((prev) => +(59.9 + (Math.random() * 0.3 - 0.1)).toFixed(1));
-      setRpm((prev) => Math.round(1450 + (Math.random() * 6 - 3)));
-      setVoltage((prev) => +(12.4 + (Math.random() * 0.1 - 0.05)).toFixed(1));
-    }, 3500);
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/pc_monitor.php?t=${Date.now()}`);
+        const json = await res.json();
 
-    return () => clearInterval(timer);
+        if (json.success && json.data) {
+          const d: PcMonitorData = json.data;
+          if (d.cpu_temp !== null) setCpuTemp(d.cpu_temp);
+          if (d.ram_usage !== null) setRamUsage(d.ram_usage);
+        }
+      } catch (err) {
+        console.error('pc_monitor fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  const handleCommandSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cmdInput.trim()) return;
-
-    const trimmed = cmdInput.trim();
-    const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
-
-    if (trimmed.toLowerCase() === 'clear') {
-      setLogs([]);
-      setCmdInput('');
-      return;
-    }
-
-    let response = '';
-    let level: 'INFO' | 'PERINGATAN' | 'ERROR' = 'INFO';
-
-    if (trimmed.toLowerCase() === 'help') {
-      response = 'Perintah tersedia: help, status, ping, feed, rpm [nilai], clear';
-    } else if (trimmed.toLowerCase() === 'status') {
-      response = `Jetson: OK | Temp: ${cpuTemp}°C | RPM: ${rpm} | Video: ${fps} FPS | Memori: 2.4/4.0GB`;
-    } else if (trimmed.toLowerCase() === 'ping') {
-      response = 'Koneksi telemetri: pong (latensi: 4ms)';
-    } else if (trimmed.toLowerCase().startsWith('rpm')) {
-      const parts = trimmed.split(' ');
-      const val = parseInt(parts[1], 10);
-      if (!isNaN(val) && val >= 0 && val <= 3000) {
-        setRpm(val);
-        response = `Target RPM motor diubah ke ${val}. Loop PID sinkronisasi berhasil.`;
-      } else {
-        response = 'Format salah. Gunakan: rpm [0-3000]';
-        level = 'PERINGATAN';
-      }
-    } else if (trimmed.toLowerCase() === 'feed') {
-      response = 'Memulai siklus pemberian pakan manual selama 5 detik... Motor PWM ON.';
-    } else {
-      response = `Perintah tidak dikenal: '${trimmed}'. Ketik 'help' untuk panduan.`;
-      level = 'PERINGATAN';
-    }
-
-    setLogs((prev) => [
-      ...prev,
-      { timestamp: timeStr, level: 'INFO', message: `root@aqua-mon:~# ${trimmed}` },
-      { timestamp: timeStr, level, message: response },
-    ]);
-    setCmdInput('');
-  };
+  const memoryGB = ramUsage !== null ? (ramUsage / 100 * 4).toFixed(1) : null;
+  const memoryPercent = ramUsage !== null ? Math.round(ramUsage) : null;
 
   return (
     <div id="hardware-view" className="p-8 max-w-7xl mx-auto space-y-6">
@@ -114,7 +93,7 @@ export const HardwareView: React.FC = () => {
                 SUHU CPU
               </span>
               <span className="text-2xl font-bold text-slate-900 font-mono-code">
-                {cpuTemp}°C
+                {loading ? '-' : cpuTemp !== null ? `${cpuTemp}°C` : '-'}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -134,11 +113,14 @@ export const HardwareView: React.FC = () => {
                 PENGGUNAAN MEMORI
               </span>
               <span className="text-slate-800 font-semibold">
-                2.4 / 4.0 GB
+                {loading ? '-' : memoryGB !== null ? `${memoryGB} / 4.0 GB` : '-'}
               </span>
             </div>
             <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-              <div className="w-[60%] h-full bg-[#0ea5e9] rounded-full" />
+              <div
+                className="h-full bg-[#0ea5e9] rounded-full transition-all duration-500"
+                style={{ width: memoryPercent !== null ? `${memoryPercent}%` : '0%' }}
+              />
             </div>
           </div>
         </div>
@@ -268,7 +250,55 @@ export const HardwareView: React.FC = () => {
           ))}
 
           {/* Interactive Shell Prompt */}
-          <form onSubmit={handleCommandSubmit} className="flex items-center gap-2 pt-2 text-[#0284c7]">
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (!cmdInput.trim()) return;
+
+            const trimmed = cmdInput.trim();
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+
+            if (trimmed.toLowerCase() === 'clear') {
+              setLogs([]);
+              setCmdInput('');
+              return;
+            }
+
+            let response = '';
+            let level: 'INFO' | 'PERINGATAN' | 'ERROR' = 'INFO';
+
+            if (trimmed.toLowerCase() === 'help') {
+              response = 'Perintah tersedia: help, status, ping, feed, rpm [nilai], clear';
+            } else if (trimmed.toLowerCase() === 'status') {
+              const tempStr = cpuTemp !== null ? `${cpuTemp}°C` : 'N/A';
+              const memStr = memoryGB !== null ? `${memoryGB}/${4.0}GB` : 'N/A';
+              response = `Jetson: OK | Temp: ${tempStr} | RPM: ${rpm} | Video: ${fps} FPS | Memori: ${memStr}`;
+            } else if (trimmed.toLowerCase() === 'ping') {
+              response = 'Koneksi telemetri: pong (latensi: 4ms)';
+            } else if (trimmed.toLowerCase().startsWith('rpm')) {
+              const parts = trimmed.split(' ');
+              const val = parseInt(parts[1], 10);
+              if (!isNaN(val) && val >= 0 && val <= 3000) {
+                setRpm(val);
+                response = `Target RPM motor diubah ke ${val}. Loop PID sinkronisasi berhasil.`;
+              } else {
+                response = 'Format salah. Gunakan: rpm [0-3000]';
+                level = 'PERINGATAN';
+              }
+            } else if (trimmed.toLowerCase() === 'feed') {
+              response = 'Memulai siklus pemberian pakan manual selama 5 detik... Motor PWM ON.';
+            } else {
+              response = `Perintah tidak dikenal: '${trimmed}'. Ketik 'help' untuk panduan.`;
+              level = 'PERINGATAN';
+            }
+
+            setLogs((prev) => [
+              ...prev,
+              { timestamp: timeStr, level: 'INFO', message: `root@aqua-mon:~# ${trimmed}` },
+              { timestamp: timeStr, level, message: response },
+            ]);
+            setCmdInput('');
+          }} className="flex items-center gap-2 pt-2 text-[#0284c7]">
             <span className="select-none font-bold">root@aqua-mon:~#</span>
             <input
               type="text"

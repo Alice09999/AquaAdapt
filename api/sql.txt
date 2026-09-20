@@ -1,0 +1,8 @@
+CREATE TABLE pc_monitor (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    device_id VARCHAR(50) NOT NULL,
+    cpu_usage FLOAT,
+    ram_usage FLOAT,
+    cpu_temp FLOAT,
+    created_at DATETIME
+);
