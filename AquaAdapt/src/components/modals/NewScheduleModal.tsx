@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, Calendar, Plus, Loader2 } from 'lucide-react';
-
-const API_BASE = 'http://localhost/smart-feeder/api';
+import { API_BASE } from '../../config/api';
 
 interface NewScheduleModalProps {
   isOpen: boolean;

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Cpu, Video, Settings2 } from 'lucide-react';
+import { Cpu, Video, Settings2, AlertCircle, CheckCircle } from 'lucide-react';
 import { TerminalLog } from '../../types';
-
-const API_BASE = 'http://localhost/smart-feeder/api';
+import { API_BASE } from '../../config/api';
 
 interface PcMonitorData {
   id: number;
@@ -10,17 +9,22 @@ interface PcMonitorData {
   cpu_usage: number | null;
   ram_usage: number | null;
   cpu_temp: number | null;
+  gpu_temp: number | null;
   created_at: string;
 }
 
+interface Device {
+  id: number;
+  device_id: string;
+  device_name: string;
+  status: string;
+  last_seen: string | null;
+}
+
 export const HardwareView: React.FC = () => {
-  const [cpuTemp, setCpuTemp] = useState<number | null>(null);
-  const [ramUsage, setRamUsage] = useState<number | null>(null);
-  const [gpuTemp, setGpuTemp] = useState<number>(45.1);
-  const [fps, setFps] = useState<number>(60.0);
-  const [rpm, setRpm] = useState<number>(1450);
-  const [voltage, setVoltage] = useState<number>(12.4);
-  const [motorLoad, setMotorLoad] = useState<number>(42);
+  const [pcMonitor, setPcMonitor] = useState<PcMonitorData | null>(null);
+  const [device, setDevice] = useState<Device | null>(null);
+  const [fps, setFps] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Terminal state
@@ -38,13 +42,19 @@ export const HardwareView: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch(`${API_BASE}/pc_monitor.php?t=${Date.now()}`);
-        const json = await res.json();
+        const [monitorRes, statusRes] = await Promise.all([
+          fetch(`${API_BASE}/pc_monitor.php?t=${Date.now()}`),
+          fetch(`${API_BASE}/status.php`),
+        ]);
 
-        if (json.success && json.data) {
-          const d: PcMonitorData = json.data;
-          if (d.cpu_temp !== null) setCpuTemp(d.cpu_temp);
-          if (d.ram_usage !== null) setRamUsage(d.ram_usage);
+        const monitorJson = await monitorRes.json();
+        const statusJson = await statusRes.json();
+
+        if (monitorJson.success && monitorJson.data) {
+          setPcMonitor(monitorJson.data);
+        }
+        if (statusJson.success && statusJson.data?.device) {
+          setDevice(statusJson.data.device);
         }
       } catch (err) {
         console.error('pc_monitor fetch error:', err);
@@ -58,8 +68,8 @@ export const HardwareView: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const memoryGB = ramUsage !== null ? (ramUsage / 100 * 4).toFixed(1) : null;
-  const memoryPercent = ramUsage !== null ? Math.round(ramUsage) : null;
+  const memoryGB = pcMonitor?.ram_usage !== null ? (pcMonitor?.ram_usage! / 100 * 4).toFixed(1) : null;
+  const memoryPercent = pcMonitor?.ram_usage !== null ? Math.round(pcMonitor?.ram_usage!) : null;
 
   return (
     <div id="hardware-view" className="p-8 max-w-7xl mx-auto space-y-6">
@@ -75,11 +85,11 @@ export const HardwareView: React.FC = () => {
 
       {/* 3 Telemetry Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Card 1: JETSON NANO */}
+        {/* Card 1: JETSON NANO - CPU & GPU */}
         <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-xs flex flex-col justify-between space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#0ea5e9]" />
+              <span className={`w-2 h-2 rounded-full ${device?.status === 'online' ? 'bg-emerald-500' : 'bg-red-500'}`} />
               <span className="text-xs font-bold uppercase tracking-wider text-slate-800 font-mono-code">
                 JETSON NANO
               </span>
@@ -93,7 +103,7 @@ export const HardwareView: React.FC = () => {
                 SUHU CPU
               </span>
               <span className="text-2xl font-bold text-slate-900 font-mono-code">
-                {loading ? '-' : cpuTemp !== null ? `${cpuTemp}°C` : '-'}
+                {loading ? '-' : pcMonitor?.cpu_temp !== null ? `${pcMonitor.cpu_temp}°C` : 'No data'}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -101,7 +111,15 @@ export const HardwareView: React.FC = () => {
                 SUHU GPU
               </span>
               <span className="text-2xl font-bold text-slate-900 font-mono-code">
-                {gpuTemp}°C
+                {loading ? '-' : pcMonitor?.gpu_temp !== null ? `${pcMonitor.gpu_temp}°C` : 'No data'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
+                CPU USAGE
+              </span>
+              <span className="text-2xl font-bold text-slate-900 font-mono-code">
+                {loading ? '-' : pcMonitor?.cpu_usage !== null ? `${pcMonitor.cpu_usage}%` : 'No data'}
               </span>
             </div>
           </div>
@@ -113,7 +131,7 @@ export const HardwareView: React.FC = () => {
                 PENGGUNAAN MEMORI
               </span>
               <span className="text-slate-800 font-semibold">
-                {loading ? '-' : memoryGB !== null ? `${memoryGB} / 4.0 GB` : '-'}
+                {loading ? '-' : memoryGB !== null ? `${memoryGB} / 4.0 GB` : 'No data'}
               </span>
             </div>
             <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
@@ -129,7 +147,7 @@ export const HardwareView: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-xs flex flex-col justify-between space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#0ea5e9]" />
+              <span className={`w-2 h-2 rounded-full ${device?.status === 'online' ? 'bg-emerald-500' : 'bg-red-500'}`} />
               <span className="text-xs font-bold uppercase tracking-wider text-slate-800 font-mono-code">
                 SISTEM KAMERA / VISI
               </span>
@@ -143,7 +161,7 @@ export const HardwareView: React.FC = () => {
                 FPS
               </span>
               <span className="text-2xl font-bold text-slate-900 font-mono-code">
-                {fps}
+                {loading ? '-' : fps !== null ? fps : 'No data'}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -154,6 +172,14 @@ export const HardwareView: React.FC = () => {
                 1920×1080
               </span>
             </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
+                RAM USAGE
+              </span>
+              <span className="text-2xl font-bold text-slate-900 font-mono-code">
+                {loading ? '-' : pcMonitor?.ram_usage !== null ? `${pcMonitor.ram_usage}%` : 'No data'}
+              </span>
+            </div>
           </div>
 
           {/* Status badge */}
@@ -161,52 +187,103 @@ export const HardwareView: React.FC = () => {
             <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
               STATUS
             </span>
-            <span className="bg-[#0ea5e9] text-white text-xs font-bold px-3 py-1 rounded-xs tracking-wider">
-              ONLINE
+            <span className={`text-xs font-bold px-3 py-1 rounded-xs tracking-wider ${
+              device?.status === 'online' 
+                ? 'bg-emerald-100 text-emerald-700' 
+                : 'bg-red-100 text-red-700'
+            }`}>
+              {device?.status === 'online' ? 'ONLINE' : 'OFFLINE'}
             </span>
           </div>
         </div>
 
-        {/* Card 3: MOTOR PENGGERAK UTAMA */}
+        {/* Card 3: SYSTEM STATUS */}
         <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-xs flex flex-col justify-between space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#0ea5e9]" />
+              <span className={`w-2 h-2 rounded-full ${device?.status === 'online' ? 'bg-emerald-500' : 'bg-red-500'}`} />
               <span className="text-xs font-bold uppercase tracking-wider text-slate-800 font-mono-code">
-                MOTOR PENGGERAK UTAMA
+                STATUS SISTEM
               </span>
             </div>
             <Settings2 className="w-4 h-4 text-slate-400" />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
-                TEGANGAN
+                DEVICE
               </span>
-              <span className="text-2xl font-bold text-slate-900 font-mono-code">
-                {voltage}V
+              <span className="text-slate-900 font-mono-code font-semibold">
+                {device?.device_name || 'AI-001'}
               </span>
             </div>
-
-            <div className="pt-1">
-              <span className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase block">
-                RPM SAAT INI
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
+                DEVICE ID
               </span>
-              <p className="text-4xl font-extrabold text-[#0284c7] font-mono-code tracking-tight mt-0.5">
-                {rpm}
-              </p>
+              <span className="text-slate-900 font-mono-code font-semibold">
+                {device?.device_id || 'AI-001'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
+                LAST SEEN
+              </span>
+              <span className="text-slate-700 font-mono-code text-[11px]">
+                {device?.last_seen ? new Date(device.last_seen).toLocaleString('id-ID') : 'Never'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
+                PC MONITOR UPDATED
+              </span>
+              <span className="text-slate-700 font-mono-code text-[11px]">
+                {pcMonitor?.created_at ? new Date(pcMonitor.created_at).toLocaleString('id-ID') : 'Never'}
+              </span>
             </div>
           </div>
 
-          {/* Beban Motor */}
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-mono-code">
-            <span className="text-slate-500 uppercase tracking-wider text-[10px]">
-              BEBAN MOTOR
-            </span>
-            <span className="text-slate-800 font-semibold">
-              {motorLoad}%
-            </span>
+          {/* System Health Indicators */}
+          <div className="pt-2 border-t border-slate-100 space-y-3">
+            <div className="flex items-center justify-between text-xs font-mono-code">
+              <span className="text-slate-500 uppercase tracking-wider text-[10px]">
+                DATABASE
+              </span>
+              <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
+                <CheckCircle className="w-3.5 h-3.5" />
+                Connected
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs font-mono-code">
+              <span className="text-slate-500 uppercase tracking-wider text-[10px]">
+                API SERVER
+              </span>
+              <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
+                <CheckCircle className="w-3.5 h-3.5" />
+                Running
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs font-mono-code">
+              <span className="text-slate-500 uppercase tracking-wider text-[10px]">
+                TELEMETRI
+              </span>
+              <span className={`flex items-center gap-1.5 font-semibold ${
+                pcMonitor ? 'text-emerald-600' : 'text-red-600'
+              }`}>
+                {pcMonitor ? (
+                  <>
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    Active
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    No Data
+                  </>
+                )}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -268,23 +345,18 @@ export const HardwareView: React.FC = () => {
             let level: 'INFO' | 'PERINGATAN' | 'ERROR' = 'INFO';
 
             if (trimmed.toLowerCase() === 'help') {
-              response = 'Perintah tersedia: help, status, ping, feed, rpm [nilai], clear';
+              response = 'Perintah tersedia: help, status, ping, feed, clear';
             } else if (trimmed.toLowerCase() === 'status') {
-              const tempStr = cpuTemp !== null ? `${cpuTemp}°C` : 'N/A';
-              const memStr = memoryGB !== null ? `${memoryGB}/${4.0}GB` : 'N/A';
-              response = `Jetson: OK | Temp: ${tempStr} | RPM: ${rpm} | Video: ${fps} FPS | Memori: ${memStr}`;
+              const cpuTempStr = pcMonitor?.cpu_temp !== null ? `${pcMonitor.cpu_temp}°C` : 'N/A';
+              const gpuTempStr = pcMonitor?.gpu_temp !== null ? `${pcMonitor.gpu_temp}°C` : 'N/A';
+              const cpuUsageStr = pcMonitor?.cpu_usage !== null ? `${pcMonitor.cpu_usage}%` : 'N/A';
+              const ramUsageStr = pcMonitor?.ram_usage !== null ? `${pcMonitor.ram_usage}%` : 'N/A';
+              const memStr = memoryGB !== null ? `${memoryGB}/4.0GB` : 'N/A';
+              const fpsStr = fps !== null ? `${fps} FPS` : 'N/A';
+              const deviceStatus = device?.status === 'online' ? 'ONLINE' : 'OFFLINE';
+              response = `Jetson: ${deviceStatus} | CPU: ${cpuTempStr} | GPU: ${gpuTempStr} | CPU Usage: ${cpuUsageStr} | RAM: ${ramUsageStr} | Video: ${fpsStr} | Memori: ${memStr}`;
             } else if (trimmed.toLowerCase() === 'ping') {
               response = 'Koneksi telemetri: pong (latensi: 4ms)';
-            } else if (trimmed.toLowerCase().startsWith('rpm')) {
-              const parts = trimmed.split(' ');
-              const val = parseInt(parts[1], 10);
-              if (!isNaN(val) && val >= 0 && val <= 3000) {
-                setRpm(val);
-                response = `Target RPM motor diubah ke ${val}. Loop PID sinkronisasi berhasil.`;
-              } else {
-                response = 'Format salah. Gunakan: rpm [0-3000]';
-                level = 'PERINGATAN';
-              }
             } else if (trimmed.toLowerCase() === 'feed') {
               response = 'Memulai siklus pemberian pakan manual selama 5 detik... Motor PWM ON.';
             } else {

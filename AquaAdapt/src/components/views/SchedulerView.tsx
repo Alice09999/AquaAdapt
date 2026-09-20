@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { FeedingScheduleItem } from '../../types';
-
-const API_BASE = 'http://localhost/smart-feeder/api';
+import { API_BASE } from '../../config/api';
 
 interface SchedulerViewProps {
   onOpenNewScheduleModal: () => void;
@@ -104,34 +103,86 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
           </div>
 
           <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-4">
-              <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">SEN 00:00</span>
-              <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm relative overflow-hidden flex items-center">
-                <div className="absolute h-full bg-sky-200 border-x border-sky-300" style={{ left: '20%', width: '9%' }} title="Interval Tetap: 07:00" />
-                <div className="absolute h-full border-2 border-dashed border-sky-400 bg-sky-50/70 flex items-center justify-center text-[10px] text-sky-600 font-mono-code font-semibold px-2" style={{ left: '46%', width: '18%' }} title="Jendela AI: 12:00 - 14:00">JENDELA AI</div>
-                <div className="absolute h-full bg-sky-200 border-x border-sky-300" style={{ left: '78%', width: '9%' }} title="Interval Tetap: 17:00" />
+            {loading ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">SEN 00:00</span>
+                  <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">SEL 00:00</span>
+                  <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">RAB 00:00</span>
+                  <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">KAM 00:00</span>
+                  <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">JUM 00:00</span>
+                  <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">SAB 00:00</span>
+                  <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">MIN 00:00</span>
+                  <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">SEL 00:00</span>
-              <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm relative overflow-hidden flex items-center">
-                <div className="absolute h-full bg-sky-200 border-x border-sky-300" style={{ left: '20%', width: '9%' }} title="Interval Tetap: 07:00" />
-                <div className="absolute h-full border-2 border-dashed border-sky-400 bg-sky-50/70 flex items-center justify-center text-[10px] text-sky-600 font-mono-code font-semibold px-2" style={{ left: '46%', width: '18%' }} title="Jendela AI: 12:00 - 14:00">JENDELA AI</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">RAB 00:00</span>
-              <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm relative overflow-hidden flex items-center">
-                <div className="absolute h-full bg-sky-200 border-x border-sky-300" style={{ left: '20%', width: '9%' }} title="Interval Tetap: 07:00" />
-                <div className="absolute text-[11px] text-red-500 font-mono-code font-semibold flex items-center" style={{ left: '32%' }}>PERAWATAN SISTEM</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">KAM 00:00</span>
-              <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm relative overflow-hidden flex items-center">
-                <div className="absolute h-full border-2 border-dashed border-sky-400 bg-sky-50/70 flex items-center justify-center text-[10px] text-sky-600 font-mono-code font-semibold px-2" style={{ left: '46%', width: '18%' }} title="Jendela AI: 12:00 - 14:00">JENDELA AI</div>
-              </div>
-            </div>
+            ) : (
+              (() => {
+                const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+                const dayLabels = ['SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB', 'MIN'];
+                return dayLabels.map((label, idx) => {
+                  const dayName = days[idx];
+                  const daySchedules = schedules.filter(s => s.active_days.includes(dayName));
+                  const intervalSchedules = daySchedules.filter(s => s.schedule_type === 'Interval Tetap').sort((a, b) => a.feeding_time.localeCompare(b.feeding_time));
+                  const aiSchedules = daySchedules.filter(s => s.schedule_type === 'Berbasis AI').sort((a, b) => a.feeding_time.localeCompare(b.feeding_time));
+
+                  return (
+                    <div key={label} className="flex items-center gap-4">
+                      <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">{label} 00:00</span>
+                      <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm relative overflow-hidden flex items-center">
+                        {intervalSchedules.length === 0 && aiSchedules.length === 0 && (
+                          <span className="text-[10px] text-slate-400 font-mono-code absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">Tidak ada jadwal</span>
+                        )}
+                        {intervalSchedules.map((sched, i) => (
+                          <div
+                            key={`interval-${sched.id}`}
+                            className="absolute h-full bg-sky-200 border-x border-sky-300 flex items-center justify-center text-[10px] text-sky-700 font-mono-code font-semibold px-1"
+                            style={{
+                              left: `${i * 25}%`,
+                              width: '20%'
+                            }}
+                            title={`Interval Tetap: ${sched.feeding_time}`}
+                          >
+                            {sched.feeding_time.slice(0, 5)}
+                          </div>
+                        ))}
+                        {aiSchedules.map((sched, i) => (
+                          <div
+                            key={`ai-${sched.id}`}
+                            className="absolute h-full border-2 border-dashed border-sky-400 bg-sky-50/70 flex items-center justify-center text-[10px] text-sky-600 font-mono-code font-semibold px-2"
+                            style={{
+                              left: `${intervalSchedules.length * 25 + i * 25}%`,
+                              width: '20%'
+                            }}
+                            title={`Jendela AI: ${sched.feeding_time}`}
+                          >
+                            AI
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+              })()
+            )}
           </div>
         </div>
 

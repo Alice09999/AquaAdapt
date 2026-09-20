@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Cpu, Download, Check, Power, ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { FeedingLogItem } from '../../types';
-
-const API_BASE = 'http://localhost/smart-feeder/api';
+import { API_BASE } from '../../config/api';
 
 export const FeedingLogView: React.FC = () => {
   const [dateRange, setDateRange] = useState<string>('7 Hari Terakhir');
@@ -87,7 +86,7 @@ export const FeedingLogView: React.FC = () => {
           </p>
           <div className="flex items-baseline gap-1">
             <span className="text-5xl font-black text-slate-900 font-mono-code tracking-tight">
-              98.2
+              {loading ? '-' : allRecords.length > 0 ? '98.2' : '-'}
             </span>
             <span className="text-2xl font-bold text-slate-600 font-mono-code">
               %

@@ -29,6 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
             cpu_usage,
             ram_usage,
             cpu_temp,
+            gpu_temp,
             created_at
         FROM pc_monitor
     ";
@@ -76,6 +77,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
             "cpu_usage" => $data["cpu_usage"] !== null ? (float)$data["cpu_usage"] : null,
             "ram_usage" => $data["ram_usage"] !== null ? (float)$data["ram_usage"] : null,
             "cpu_temp" => $data["cpu_temp"] !== null ? (float)$data["cpu_temp"] : null,
+            "gpu_temp" => $data["gpu_temp"] !== null ? (float)$data["gpu_temp"] : null,
             "created_at" => $data["created_at"]
         ]
     ]);
@@ -114,6 +116,7 @@ $device_id = $input["device_id"] ?? null;
 $cpu_usage = $input["cpu_usage"] ?? null;
 $ram_usage = $input["ram_usage"] ?? null;
 $cpu_temp  = $input["cpu_temp"] ?? null;
+$gpu_temp  = $input["gpu_temp"] ?? null;
 
 if (empty($device_id) || $cpu_usage === null || $ram_usage === null) {
     http_response_code(400);
@@ -125,14 +128,37 @@ if (empty($device_id) || $cpu_usage === null || $ram_usage === null) {
     exit;
 }
 
-// Query Insert ke database (Pastikan tabel pc_monitor sudah dibuat)
+if (!is_numeric($cpu_usage) || $cpu_usage < 0 || $cpu_usage > 100) {
+    http_response_code(400);
+    echo json_encode(["success" => false, "message" => "cpu_usage must be a number between 0 and 100."]);
+    exit;
+}
+
+if (!is_numeric($ram_usage) || $ram_usage < 0 || $ram_usage > 100) {
+    http_response_code(400);
+    echo json_encode(["success" => false, "message" => "ram_usage must be a number between 0 and 100."]);
+    exit;
+}
+
+if ($cpu_temp !== null && (!is_numeric($cpu_temp) || $cpu_temp < -50 || $cpu_temp > 150)) {
+    http_response_code(400);
+    echo json_encode(["success" => false, "message" => "cpu_temp must be a valid temperature."]);
+    exit;
+}
+
+if ($gpu_temp !== null && (!is_numeric($gpu_temp) || $gpu_temp < -50 || $gpu_temp > 150)) {
+    http_response_code(400);
+    echo json_encode(["success" => false, "message" => "gpu_temp must be a valid temperature."]);
+    exit;
+}
+
 $sql = "
-    INSERT INTO pc_monitor (device_id, cpu_usage, ram_usage, cpu_temp, created_at)
-    VALUES (?, ?, ?, ?, NOW())
+    INSERT INTO pc_monitor (device_id, cpu_usage, ram_usage, cpu_temp, gpu_temp, created_at)
+    VALUES (?, ?, ?, ?, ?, NOW())
 ";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("sdds", $device_id, $cpu_usage, $ram_usage, $cpu_temp);
+$stmt->bind_param("sdddd", $device_id, $cpu_usage, $ram_usage, $cpu_temp, $gpu_temp);
 
 if ($stmt->execute()) {
     http_response_code(201);
@@ -142,9 +168,10 @@ if ($stmt->execute()) {
         "data" => [
             "id" => $stmt->insert_id,
             "device_id" => $device_id,
-            "cpu_usage" => $cpu_usage,
-            "ram_usage" => $ram_usage,
-            "cpu_temp" => $cpu_temp
+            "cpu_usage" => (float)$cpu_usage,
+            "ram_usage" => (float)$ram_usage,
+            "cpu_temp" => $cpu_temp !== null ? (float)$cpu_temp : null,
+            "gpu_temp" => $gpu_temp !== null ? (float)$gpu_temp : null
         ]
     ]);
 } else {

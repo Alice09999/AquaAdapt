@@ -52,6 +52,9 @@ CREATE TABLE IF NOT EXISTS `pc_monitor` (
   `cpu_usage` float DEFAULT NULL,
   `ram_usage` float DEFAULT NULL,
   `cpu_temp` float DEFAULT NULL,
+  `gpu_temp` float DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_pc_monitor_device_id` (`device_id`),
+  CONSTRAINT `fk_pc_monitor_device` FOREIGN KEY (`device_id`) REFERENCES `ai_devices` (`device_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

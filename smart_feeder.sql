@@ -146,12 +146,29 @@ ALTER TABLE `feeding_schedules`
 --
 ALTER TABLE `feeding_logs`
   ADD CONSTRAINT `fk_feeding_logs_device` FOREIGN KEY (`device_id`) REFERENCES `ai_devices` (`device_id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
 --
 -- Constraints for table `feeding_schedules`
 --
+
 ALTER TABLE `feeding_schedules`
   ADD CONSTRAINT `fk_feeding_schedules_device` FOREIGN KEY (`device_id`) REFERENCES `ai_devices` (`device_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Table structure for table `pc_monitor`
+--
+
+CREATE TABLE `pc_monitor` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `device_id` varchar(50) NOT NULL,
+  `cpu_usage` float DEFAULT NULL,
+  `ram_usage` float DEFAULT NULL,
+  `cpu_temp` float DEFAULT NULL,
+  `gpu_temp` float DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_pc_monitor_device_id` (`device_id`),
+  CONSTRAINT `fk_pc_monitor_device` FOREIGN KEY (`device_id`) REFERENCES `ai_devices` (`device_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- AUTO_INCREMENT for dumped tables

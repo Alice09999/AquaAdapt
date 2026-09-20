@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowDown, Check } from 'lucide-react';
-
-const API_BASE = 'http://localhost/smart-feeder/api';
+import { API_BASE } from '../../config/api';
 
 const HARI_INDONESIA: Record<string, string> = {
   Monday: 'Senin',
@@ -20,6 +19,7 @@ interface Detection {
   device_id: string;
   status: string;
   confidence: number;
+  image_path: string | null;
   detected_at: string;
   created_at: string;
 }
@@ -57,6 +57,24 @@ interface Device {
   device_name: string;
   status: string;
   last_seen: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PcMonitor {
+  id: number;
+  device_id: string;
+  cpu_usage: number | null;
+  ram_usage: number | null;
+  cpu_temp: number | null;
+  gpu_temp: number | null;
+  created_at: string;
+}
+
+interface StatusResponse {
+  device: Device;
+  detection: Detection | null;
+  pc_monitor: PcMonitor | null;
 }
 
 function formatTime(timeStr: string): string {
@@ -81,41 +99,38 @@ export const OverviewView: React.FC = () => {
   const [feedingLogs, setFeedingLogs] = useState<FeedingLog[]>([]);
   const [schedules, setSchedules] = useState<FeedingSchedule[]>([]);
   const [device, setDevice] = useState<Device | null>(null);
+  const [pcMonitor, setPcMonitor] = useState<PcMonitor | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [detRes, logRes, schedRes, healthRes] = await Promise.all([
+        const [statusRes, logRes, schedRes] = await Promise.all([
           fetch(`${API_BASE}/status.php`),
           fetch(`${API_BASE}/feeding_logs.php?limit=50`),
           fetch(`${API_BASE}/feeding_schedules.php`),
-          fetch(`${API_BASE}/health.php`),
         ]);
 
-        const detJson = await detRes.json();
+        const statusJson = await statusRes.json();
         const logJson = await logRes.json();
         const schedJson = await schedRes.json();
-        const healthJson = await healthRes.json();
 
-        if (detJson.success && detJson.data) {
-          setDetection(detJson.data);
+        if (statusJson.success && statusJson.data) {
+          if (statusJson.data.device) {
+            setDevice(statusJson.data.device);
+          }
+          if (statusJson.data.detection) {
+            setDetection(statusJson.data.detection);
+          }
+          if (statusJson.data.pc_monitor) {
+            setPcMonitor(statusJson.data.pc_monitor);
+          }
         }
         if (logJson.success && logJson.data) {
           setFeedingLogs(logJson.data);
         }
         if (schedJson.success && schedJson.data) {
           setSchedules(schedJson.data);
-        }
-
-        if (healthJson.success) {
-          setDevice({
-            id: 1,
-            device_id: 'AI-001',
-            device_name: 'AI Kamera Kolam 1',
-            status: healthJson.database === 'connected' ? 'online' : 'offline',
-            last_seen: healthJson.timestamp,
-          });
         }
       } catch {
         // Network error — device stays null
@@ -383,9 +398,9 @@ export const OverviewView: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span className={`w-2 h-2 rounded-full ${isDeviceOnline ? 'bg-sky-500' : 'bg-slate-400'}`} />
-                <span className="text-slate-800">Kamera</span>
+                <span className="text-slate-800">{device?.device_name || 'Kamera'}</span>
               </div>
-              <span className="text-slate-600 font-medium">{isDeviceOnline ? 'Active' : 'Inactive'}</span>
+              <span className="text-slate-600 font-medium">{isDeviceOnline ? 'Online' : 'Offline'}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -401,13 +416,31 @@ export const OverviewView: React.FC = () => {
               </div>
               <span className="text-slate-600 font-medium">{lastLog?.motor_status === 'ON' ? 'Active' : 'Standby'}</span>
             </div>
+            {pcMonitor && pcMonitor.cpu_temp !== null && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2 h-2 rounded-full bg-sky-500" />
+                  <span className="text-slate-800">CPU Temperature</span>
+                </div>
+                <span className="text-slate-600 font-medium font-mono-code">{pcMonitor.cpu_temp}°C</span>
+              </div>
+            )}
+            {pcMonitor && pcMonitor.gpu_temp !== null && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2 h-2 rounded-full bg-sky-500" />
+                  <span className="text-slate-800">GPU Temperature</span>
+                </div>
+                <span className="text-slate-600 font-medium font-mono-code">{pcMonitor.gpu_temp}°C</span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Connection Status */}
         <div className="md:pl-8 space-y-3 pt-4 md:pt-0">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-            KONEKSI
+            KONEKSI & SISTEM
           </h2>
           <div className="space-y-2 pt-1 text-[13px]">
             <div className="flex items-center justify-between">
@@ -424,6 +457,24 @@ export const OverviewView: React.FC = () => {
                 <span className="text-slate-600 font-medium">{isDeviceOnline ? 'Active' : 'Inactive'}</span>
               </div>
             </div>
+            {device && device.last_seen && (
+              <div className="flex items-center justify-between">
+                <span className="text-slate-800">Last Seen</span>
+                <span className="text-slate-600 font-medium font-mono-code text-[11px]">{device.last_seen}</span>
+              </div>
+            )}
+            {pcMonitor && pcMonitor.cpu_usage !== null && (
+              <div className="flex items-center justify-between">
+                <span className="text-slate-800">CPU Usage</span>
+                <span className="text-slate-600 font-medium font-mono-code">{pcMonitor.cpu_usage}%</span>
+              </div>
+            )}
+            {pcMonitor && pcMonitor.ram_usage !== null && (
+              <div className="flex items-center justify-between">
+                <span className="text-slate-800">RAM Usage</span>
+                <span className="text-slate-600 font-medium font-mono-code">{pcMonitor.ram_usage}%</span>
+              </div>
+            )}
           </div>
         </div>
 

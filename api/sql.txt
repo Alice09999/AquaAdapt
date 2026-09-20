@@ -4,5 +4,6 @@ CREATE TABLE pc_monitor (
     cpu_usage FLOAT,
     ram_usage FLOAT,
     cpu_temp FLOAT,
+    gpu_temp FLOAT,
     created_at DATETIME
 );

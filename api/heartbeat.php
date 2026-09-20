@@ -6,6 +6,54 @@ require_once "config.php";
 
 
 // ======================================================
+// GET: Check device status and update offline devices
+// ======================================================
+
+if ($_SERVER["REQUEST_METHOD"] === "GET") {
+    $timeout_minutes = isset($_GET['timeout']) ? (int)$_GET['timeout'] : 5;
+    $timeout_minutes = max(1, min($timeout_minutes, 60));
+
+    $offline_threshold = date("Y-m-d H:i:s", strtotime("-{$timeout_minutes} minutes"));
+
+    $update_sql = "
+        UPDATE ai_devices
+        SET status = 'offline'
+        WHERE status = 'online' AND last_seen < ?
+    ";
+
+    $update_stmt = $conn->prepare($update_sql);
+    $update_stmt->bind_param("s", $offline_threshold);
+    $update_stmt->execute();
+    $affected_rows = $update_stmt->affected_rows;
+    $update_stmt->close();
+
+    $select_sql = "
+        SELECT device_id, device_name, status, last_seen
+        FROM ai_devices
+        ORDER BY device_id
+    ";
+
+    $result = $conn->query($select_sql);
+    $devices = [];
+    while ($row = $result->fetch_assoc()) {
+        $devices[] = $row;
+    }
+
+    http_response_code(200);
+    echo json_encode([
+        "success" => true,
+        "message" => "Device status checked.",
+        "timeout_minutes" => $timeout_minutes,
+        "updated_offline" => $affected_rows,
+        "devices" => $devices
+    ]);
+
+    $conn->close();
+    exit;
+}
+
+
+// ======================================================
 // HANYA MENERIMA POST
 // ======================================================
 
@@ -15,7 +63,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
 
     echo json_encode([
         "success" => false,
-        "message" => "Method not allowed. Use POST."
+        "message" => "Method not allowed. Use GET or POST."
     ]);
 
     exit;

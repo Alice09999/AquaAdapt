@@ -1,20 +1,88 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sliders, Activity, FileText } from 'lucide-react';
+import { Sliders, Activity, FileText, Loader2 } from 'lucide-react';
 import { EventLogItem } from '../../types';
+import { API_BASE } from '../../config/api';
+
+interface Detection {
+  id: number;
+  device_id: string;
+  status: string;
+  confidence: number;
+  image_path: string | null;
+  detected_at: string;
+  created_at: string;
+}
+
+interface Device {
+  id: number;
+  device_id: string;
+  device_name: string;
+  status: string;
+  last_seen: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface StatusResponse {
+  device: Device;
+  detection: Detection | null;
+  pc_monitor: any;
+}
 
 export const AiMonitorView: React.FC = () => {
   const [detectionEnabled, setDetectionEnabled] = useState<boolean>(true);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [detection, setDetection] = useState<Detection | null>(null);
+  const [device, setDevice] = useState<Device | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Initial event logs matching screenshot exactly
-  const [events] = useState<EventLogItem[]>([
-    { time: '14:32:01', message: 'Pakan terdeteksi di sektor permukaan 2', highlight: true },
-    { time: '14:31:45', message: 'Pakan habis terkonsumsi oleh ikan', highlight: false },
-    { time: '14:30:12', message: 'Pemberian pakan selesai, monitoring sisa pelet', highlight: true },
-    { time: '14:28:59', message: 'Kondisi kolam: Bebas sisa pakan (Permukaan Bersih)', highlight: false },
-    { time: '14:25:00', message: 'Pemeriksaan sensor optik normal', highlight: true },
-    { time: '14:20:11', message: 'Kalibrasi detektor pakan otomatis berhasil', highlight: false },
-  ]);
+  // Fetch real AI detection data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/status.php`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          if (json.data.device) setDevice(json.data.device);
+          if (json.data.detection) setDetection(json.data.detection);
+        }
+      } catch (err) {
+        console.error('Failed to fetch AI status:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Event logs from feeding logs API
+  const [events, setEvents] = useState<EventLogItem[]>([]);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/feeding_logs.php?limit=10`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          const eventLogs: EventLogItem[] = json.data.map((log: any) => ({
+            time: new Date(log.started_at).toLocaleTimeString('id-ID', { hour12: false }),
+            message: `${log.ai_decision} → Feeding → ${log.motor_status === 'ON' ? 'Feeding' : 'Full'}`,
+            highlight: log.ai_decision === 'Hungry',
+          }));
+          setEvents(eventLogs);
+        }
+      } catch (err) {
+        console.error('Failed to fetch events:', err);
+      }
+    };
+
+    fetchEvents();
+    const interval = setInterval(fetchEvents, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Pond live simulation on canvas
   useEffect(() => {
@@ -145,8 +213,8 @@ export const AiMonitorView: React.FC = () => {
 
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-sky-50 border border-sky-200 rounded-full text-xs font-semibold text-sky-500 uppercase tracking-wider">
-            <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
-            <span>ONLINE / SISTEM AKTIF</span>
+            <span className={`w-2 h-2 rounded-full animate-pulse ${device?.status === 'online' ? 'bg-emerald-400' : 'bg-red-400'}`} />
+            <span>{loading ? 'MEMUAT...' : device?.status === 'online' ? 'ONLINE / SISTEM AKTIF' : 'OFFLINE / SISTEM TIDAK AKTIF'}</span>
           </div>
         </div>
       </div>
@@ -174,9 +242,9 @@ export const AiMonitorView: React.FC = () => {
           </div>
 
           {/* AI Bounding Boxes Overlays (matching Screenshot 2) */}
-          {detectionEnabled && (
+          {detectionEnabled && detection && (
             <div className="absolute inset-0 z-10 pointer-events-none p-6">
-              {/* Box 1: PAKAN_TERDETEKSI : FULL */}
+              {/* Box 1: PAKAN_TERDETEKSI / PAKAN_HABIS */}
               <div 
                 className="absolute border-2 border-sky-400 bg-sky-400/10 rounded-xs transition-all"
                 style={{ top: '22%', left: '16%', width: '38%', height: '32%' }}
@@ -184,13 +252,13 @@ export const AiMonitorView: React.FC = () => {
                 {/* Header Tag */}
                 <div className="absolute -top-6 left-0 bg-[#0284c7] text-white font-mono-code text-[10px] font-bold px-2 py-0.5 tracking-wider uppercase shadow-xs flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-sky-200 animate-ping" />
-                  PAKAN_TERDETEKSI : FULL
+                  {detection.status === 'pakan_ada' ? 'PAKAN_TERDETEKSI : FULL' : 'PAKAN_TERDETEKSI : HABIS'}
                 </div>
                 {/* Center dot */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-sky-400 rounded-full" />
               </div>
 
-              {/* Box 2: SEBARAN PAKAN : FULL */}
+              {/* Box 2: SEBARAN PAKAN */}
               <div 
                 className="absolute border-2 border-sky-400 bg-sky-400/10 rounded-xs transition-all"
                 style={{ top: '56%', left: '12%', width: '44%', height: '35%' }}
@@ -198,7 +266,7 @@ export const AiMonitorView: React.FC = () => {
                 {/* Header Tag */}
                 <div className="absolute -top-6 left-0 bg-[#0284c7] text-white font-mono-code text-[10px] font-bold px-2 py-0.5 tracking-wider uppercase shadow-xs flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-sky-200 animate-ping" />
-                  SEBARAN PAKAN : FULL
+                  {detection.status === 'pakan_ada' ? 'SEBARAN PAKAN : FULL' : 'SEBARAN PAKAN : HABIS'}
                 </div>
                 {/* Center dot */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-sky-400 rounded-full" />
@@ -270,26 +338,56 @@ export const AiMonitorView: React.FC = () => {
                     STATUS PAKAN KOLAM
                   </span>
                   <span className="text-[#0ea5e9] uppercase tracking-wider">
-                    ADA PAKAN (TERSEDIA)
+                    {loading ? 'MEMUAT...' : detection?.status === 'pakan_ada' ? 'ADA PAKAN (TERSEDIA)' : detection?.status === 'pakan_habis' ? 'PAKAN HABIS' : 'UNKNOWN'}
                   </span>
                 </div>
                 <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="w-[70%] h-full bg-[#0ea5e9] rounded-full" />
+                  <div className="h-full bg-[#0ea5e9] rounded-full" style={{ width: loading ? '0%' : detection?.status === 'pakan_ada' ? '70%' : '30%' }} />
                 </div>
               </div>
 
-              {/* Kepadatan Sebaran Pakan */}
+              {/* Confidence */}
               <div>
                 <div className="flex items-center justify-between pb-1.5 font-semibold">
                   <span className="text-slate-700 tracking-wider uppercase text-[11px]">
-                    KEPADATAN SEBARAN PAKAN
+                    CONFIDENCE
                   </span>
                   <span className="text-[#0ea5e9] uppercase tracking-wider">
-                    MERATA (88%)
+                    {loading ? '-' : detection ? `${Math.round(detection.confidence * 100)}%` : 'N/A'}
                   </span>
                 </div>
                 <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="w-[88%] h-full bg-[#0ea5e9] rounded-full" />
+                  <div className="h-full bg-[#0ea5e9] rounded-full" style={{ width: loading ? '0%' : detection ? `${Math.round(detection.confidence * 100)}%` : '0%' }} />
+                </div>
+              </div>
+
+              {/* Device Status */}
+              <div>
+                <div className="flex items-center justify-between pb-1.5 font-semibold">
+                  <span className="text-slate-700 tracking-wider uppercase text-[11px]">
+                    DEVICE STATUS
+                  </span>
+                  <span className={`uppercase tracking-wider ${device?.status === 'online' ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {loading ? 'MEMUAT...' : device?.status === 'online' ? 'ONLINE' : 'OFFLINE'}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ 
+                    width: loading ? '0%' : device?.status === 'online' ? '100%' : '0%', 
+                    backgroundColor: device?.status === 'online' ? '#10b981' : '#ef4444' 
+                  }} />
+                </div>
+              </div>
+
+              {/* Last Detection Time */}
+              <div>
+                <div className="flex items-center justify-between pb-1.5 font-semibold">
+                  <span className="text-slate-700 tracking-wider uppercase text-[11px]">
+                    LAST DETECTION
+                  </span>
+                  <span className="text-[#0ea5e9] uppercase tracking-wider text-[11px]">
+                    {loading ? '-' : detection ? new Date(detection.detected_at).toLocaleTimeString('id-ID', { hour12: false }) : 'N/A'}
+                  </span>
                 </div>
               </div>
             </div>
