@@ -23,6 +23,8 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $device_id = $_GET["device_id"] ?? null;
     $limit = isset($_GET["limit"]) ? (int)$_GET["limit"] : 50;
     $offset = isset($_GET["offset"]) ? (int)$_GET["offset"] : 0;
+    $date_from = $_GET["date_from"] ?? null;
+    $date_to = $_GET["date_to"] ?? null;
 
     if ($limit > 200) $limit = 200;
 
@@ -43,11 +45,28 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
 
     $params = [];
     $types = "";
+    $where_conditions = [];
 
     if (!empty($device_id)) {
-        $sql .= " WHERE fl.device_id = ?";
+        $where_conditions[] = "fl.device_id = ?";
         $params[] = $device_id;
         $types .= "s";
+    }
+
+    if (!empty($date_from)) {
+        $where_conditions[] = "DATE(fl.started_at) >= ?";
+        $params[] = $date_from;
+        $types .= "s";
+    }
+
+    if (!empty($date_to)) {
+        $where_conditions[] = "DATE(fl.started_at) <= ?";
+        $params[] = $date_to;
+        $types .= "s";
+    }
+
+    if (!empty($where_conditions)) {
+        $sql .= " WHERE " . implode(" AND ", $where_conditions);
     }
 
     $sql .= " ORDER BY fl.id DESC LIMIT ? OFFSET ?";
@@ -76,9 +95,76 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     }
 
     // Hitung total
-    $count_sql = "SELECT COUNT(*) as total FROM feeding_logs";
-    $count_result = $conn->query($count_sql);
+    $count_sql = "SELECT COUNT(*) as total FROM feeding_logs fl";
+    $count_params = [];
+    $count_types = "";
+    $count_where = [];
+
+    if (!empty($device_id)) {
+        $count_where[] = "fl.device_id = ?";
+        $count_params[] = $device_id;
+        $count_types .= "s";
+    }
+    if (!empty($date_from)) {
+        $count_where[] = "DATE(fl.started_at) >= ?";
+        $count_params[] = $date_from;
+        $count_types .= "s";
+    }
+    if (!empty($date_to)) {
+        $count_where[] = "DATE(fl.started_at) <= ?";
+        $count_params[] = $date_to;
+        $count_types .= "s";
+    }
+    if (!empty($count_where)) {
+        $count_sql .= " WHERE " . implode(" AND ", $count_where);
+    }
+
+    $count_stmt = $conn->prepare($count_sql);
+    if (!empty($count_params)) {
+        $count_stmt->bind_param($count_types, ...$count_params);
+    }
+    $count_stmt->execute();
+    $count_result = $count_stmt->get_result();
     $total = $count_result->fetch_assoc()["total"];
+    $count_stmt->close();
+
+    // Hitung average confidence dari ai_detections untuk periode yang sama
+    $avg_confidence = null;
+    $confidence_sql = "
+        SELECT AVG(confidence) as avg_confidence
+        FROM ai_detections
+        WHERE 1=1
+    ";
+    $confidence_params = [];
+    $confidence_types = "";
+
+    if (!empty($device_id)) {
+        $confidence_sql .= " AND device_id = ?";
+        $confidence_params[] = $device_id;
+        $confidence_types .= "s";
+    }
+    if (!empty($date_from)) {
+        $confidence_sql .= " AND DATE(detected_at) >= ?";
+        $confidence_params[] = $date_from;
+        $confidence_types .= "s";
+    }
+    if (!empty($date_to)) {
+        $confidence_sql .= " AND DATE(detected_at) <= ?";
+        $confidence_params[] = $date_to;
+        $confidence_types .= "s";
+    }
+
+    $confidence_stmt = $conn->prepare($confidence_sql);
+    if (!empty($confidence_params)) {
+        $confidence_stmt->bind_param($confidence_types, ...$confidence_params);
+    }
+    $confidence_stmt->execute();
+    $confidence_result = $confidence_stmt->get_result();
+    $confidence_row = $confidence_result->fetch_assoc();
+    if ($confidence_row && $confidence_row["avg_confidence"] !== null) {
+        $avg_confidence = round((float)$confidence_row["avg_confidence"] * 100, 1);
+    }
+    $confidence_stmt->close();
 
     http_response_code(200);
 
@@ -89,7 +175,8 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
             "total" => (int)$total,
             "limit" => $limit,
             "offset" => $offset,
-        ]
+        ],
+        "average_confidence" => $avg_confidence
     ]);
 
     $stmt->close();

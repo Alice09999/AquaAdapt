@@ -21,6 +21,25 @@ interface Device {
   last_seen: string | null;
 }
 
+interface HealthData {
+  success: boolean;
+  server: string;
+  database: string;
+  timestamp: string;
+}
+
+interface FeedingLogItem {
+  id: number;
+  device_id: string;
+  device_name: string | null;
+  ai_decision: string;
+  motor_status: string;
+  started_at: string;
+  completed_at: string | null;
+  duration_seconds: number | null;
+  created_at: string;
+}
+
 export const HardwareView: React.FC = () => {
   const [pcMonitor, setPcMonitor] = useState<PcMonitorData | null>(null);
   const [device, setDevice] = useState<Device | null>(null);
@@ -28,43 +47,117 @@ export const HardwareView: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   // Terminal state
-  const [logs, setLogs] = useState<TerminalLog[]>([
-    { timestamp: '14:32:01.002', level: 'INFO', message: 'Tautan telemetri Jetson Nano terhubung.' },
-    { timestamp: '14:32:01.045', level: 'INFO', message: 'Aliran video kamera diinisialisasi via CSI-2 (1080p60).' },
-    { timestamp: '14:32:02.110', level: 'INFO', message: 'Pengontrol motor PWM aktif pada GPIO 32.' },
-    { timestamp: '14:32:05.400', level: 'PERINGATAN', message: 'Fluktuasi RPM kecil terdeteksi. Mengoreksi otomatis loop PI.' },
-    { timestamp: '14:32:08.991', level: 'INFO', message: 'Kondisi sistem normal. Menunggu perintah jadwal pakan...' },
-  ]);
+  const [logs, setLogs] = useState<TerminalLog[]>([]);
   const [cmdInput, setCmdInput] = useState<string>('');
   const terminalEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Fetch pc_monitor data from database (polling setiap 5 detik)
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [monitorRes, statusRes] = await Promise.all([
-          fetch(`${API_BASE}/pc_monitor.php?t=${Date.now()}`),
-          fetch(`${API_BASE}/status.php`),
-        ]);
+  // Track last data to avoid duplicate logs
+  const lastDataRef = useRef<{
+    deviceStatus: string | null;
+    pcMonitorId: number | null;
+    feedingLogId: number | null;
+    healthTimestamp: string | null;
+  }>({
+    deviceStatus: null,
+    pcMonitorId: null,
+    feedingLogId: null,
+    healthTimestamp: null,
+  });
 
-        const monitorJson = await monitorRes.json();
-        const statusJson = await statusRes.json();
+  const addLog = (level: 'INFO' | 'PERINGATAN' | 'ERROR', message: string, timestamp?: Date) => {
+    const time = timestamp || new Date();
+    const timeStr = `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}:${time.getSeconds().toString().padStart(2, '0')}.${time.getMilliseconds().toString().padStart(3, '0')}`;
+    setLogs((prev) => {
+      const newLogs = [...prev, { timestamp: timeStr, level, message }];
+      // Keep max 100 logs
+      return newLogs.slice(-100);
+    });
+  };
 
-        if (monitorJson.success && monitorJson.data) {
-          setPcMonitor(monitorJson.data);
+  // Fetch all data for terminal logs
+  const fetchTerminalData = async () => {
+    try {
+      const [healthRes, statusRes, monitorRes, feedingRes] = await Promise.all([
+        fetch(`${API_BASE}/health.php`),
+        fetch(`${API_BASE}/status.php`),
+        fetch(`${API_BASE}/pc_monitor.php`),
+        fetch(`${API_BASE}/feeding_logs.php?limit=5&offset=0`),
+      ]);
+
+      const [healthJson, statusJson, monitorJson, feedingJson] = await Promise.all([
+        healthRes.json(),
+        statusRes.json(),
+        monitorRes.json(),
+        feedingRes.json(),
+      ]);
+
+      // Health check logs
+      if (healthJson.success) {
+        if (healthJson.timestamp !== lastDataRef.current.healthTimestamp) {
+          addLog('INFO', `API SERVER: ${healthJson.server.toUpperCase()}`, new Date(healthJson.timestamp));
+          addLog('INFO', `DATABASE: ${healthJson.database.toUpperCase()}`, new Date(healthJson.timestamp));
+          lastDataRef.current.healthTimestamp = healthJson.timestamp;
         }
-        if (statusJson.success && statusJson.data?.device) {
-          setDevice(statusJson.data.device);
-        }
-      } catch (err) {
-        console.error('pc_monitor fetch error:', err);
-      } finally {
-        setLoading(false);
       }
-    };
 
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
+      // Device status logs
+      if (statusJson.success && statusJson.data?.device) {
+        const deviceData = statusJson.data.device;
+        
+        // Device online/offline change
+        if (deviceData.status !== lastDataRef.current.deviceStatus) {
+          const statusMsg = deviceData.status === 'online' ? 'ONLINE' : 'OFFLINE';
+          addLog(deviceData.status === 'online' ? 'INFO' : 'PERINGATAN', 
+            `DEVICE ${deviceData.device_id}: ${statusMsg}`, 
+            deviceData.last_seen ? new Date(deviceData.last_seen) : new Date()
+          );
+          lastDataRef.current.deviceStatus = deviceData.status;
+        }
+
+        // PC Monitor data from status
+        if (statusJson.data.pc_monitor) {
+          const monitor = statusJson.data.pc_monitor;
+          if (monitor.id !== lastDataRef.current.pcMonitorId) {
+            const time = monitor.created_at ? new Date(monitor.created_at) : new Date();
+            addLog('INFO', `TELEMETRI UPDATE: CPU ${monitor.cpu_temp !== null ? monitor.cpu_temp + '°C' : 'N/A'} | GPU ${monitor.gpu_temp !== null ? monitor.gpu_temp + '°C' : 'N/A'} | CPU Usage ${monitor.cpu_usage !== null ? monitor.cpu_usage + '%' : 'N/A'} | RAM ${monitor.ram_usage !== null ? monitor.ram_usage + '%' : 'N/A'}`, time);
+            lastDataRef.current.pcMonitorId = monitor.id;
+          }
+        }
+
+        // Detection log
+        if (statusJson.data.detection) {
+          const det = statusJson.data.detection;
+          addLog('INFO', `DETECTION: ${det.status} (confidence: ${(det.confidence * 100).toFixed(1)}%)`, new Date(det.detected_at));
+        }
+      }
+
+      // Latest feeding log
+      if (feedingJson.success && feedingJson.data && feedingJson.data.length > 0) {
+        const latestFeed = feedingJson.data[0];
+        if (latestFeed.id !== lastDataRef.current.feedingLogId) {
+          addLog('INFO', `FEEDING EVENT: ${latestFeed.ai_decision} | Motor ${latestFeed.motor_status} | Duration: ${latestFeed.duration_seconds ?? 'N/A'}s`, new Date(latestFeed.started_at));
+          lastDataRef.current.feedingLogId = latestFeed.id;
+        }
+      }
+
+      // Update main state (for telemetry cards)
+      if (monitorJson.success && monitorJson.data) {
+        setPcMonitor(monitorJson.data);
+      }
+      if (statusJson.success && statusJson.data?.device) {
+        setDevice(statusJson.data.device);
+      }
+    } catch (err) {
+      console.error('Terminal data fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch and polling (every 5 seconds, same as existing)
+  useEffect(() => {
+    fetchTerminalData();
+    const interval = setInterval(fetchTerminalData, 5000);
     return () => clearInterval(interval);
   }, []);
 

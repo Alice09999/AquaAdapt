@@ -1,7 +1,46 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Cpu, Download, Check, Power, ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Cpu, Download, Check, Power, ChevronDown, ChevronLeft, ChevronRight, Loader2, BarChart2 } from 'lucide-react';
 import { FeedingLogItem } from '../../types';
 import { API_BASE } from '../../config/api';
+
+function getDateRangeParams(range: string): { date_from: string; date_to: string } | null {
+  const now = new Date();
+  const to = now.toISOString().split('T')[0];
+  let from: string;
+
+  switch (range) {
+    case 'Hari Ini':
+      from = to;
+      break;
+    case '7 Hari Terakhir':
+      const d7 = new Date(now);
+      d7.setDate(d7.getDate() - 6);
+      from = d7.toISOString().split('T')[0];
+      break;
+    case '30 Hari Terakhir':
+      const d30 = new Date(now);
+      d30.setDate(d30.getDate() - 29);
+      from = d30.toISOString().split('T')[0];
+      break;
+    case 'Bulan Ini':
+      from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      break;
+    default:
+      return null;
+  }
+  return { date_from: from, date_to: to };
+}
+
+function getChartData(records: FeedingLogItem[]): { date: string; count: number }[] {
+  const counts: Record<string, number> = {};
+  records.forEach((r) => {
+    const date = r.started_at.split('T')[0] || r.started_at.split(' ')[0];
+    counts[date] = (counts[date] || 0) + 1;
+  });
+  return Object.entries(counts)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, count]) => ({ date, count }));
+}
 
 export const FeedingLogView: React.FC = () => {
   const [dateRange, setDateRange] = useState<string>('7 Hari Terakhir');
@@ -12,17 +51,25 @@ export const FeedingLogView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [totalFromServer, setTotalFromServer] = useState<number>(0);
+  const [averageConfidence, setAverageConfidence] = useState<number | null>(null);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/feeding_logs.php?limit=200&offset=0`);
+      const rangeParams = getDateRangeParams(dateRange);
+      const params = new URLSearchParams({ limit: '200', offset: '0' });
+      if (rangeParams) {
+        params.set('date_from', rangeParams.date_from);
+        params.set('date_to', rangeParams.date_to);
+      }
+      const res = await fetch(`${API_BASE}/feeding_logs.php?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setAllRecords(json.data);
         setTotalFromServer(json.pagination?.total ?? json.data.length);
+        setAverageConfidence(json.average_confidence ?? null);
       } else {
         throw new Error(json.message || 'Gagal memuat data');
       }
@@ -30,16 +77,17 @@ export const FeedingLogView: React.FC = () => {
       const message = err instanceof Error ? err.message : 'Gagal mengambil data dari server';
       setError(message);
       setAllRecords([]);
+      setAverageConfidence(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dateRange]);
 
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
 
-  // Filtering
+  // Filtering (status only, date is handled by API)
   const filteredRecords = allRecords.filter((rec) => {
     if (statusFilter === 'Hanya ON (Hungry)') return rec.motor_status === 'ON';
     if (statusFilter === 'Hanya OFF (FULL)') return rec.motor_status === 'OFF';
@@ -49,6 +97,11 @@ export const FeedingLogView: React.FC = () => {
   const pageSize = 5;
   const totalPages = Math.ceil(filteredRecords.length / pageSize);
   const displayedRecords = filteredRecords.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const chartData = getChartData(filteredRecords);
+  const maxCount = chartData.length > 0 ? Math.max(...chartData.map(d => d.count), 1) : 1;
+  const barWidth = chartData.length > 0 ? Math.min(40, 700 / chartData.length) : 40;
+  const gap = chartData.length > 0 ? (800 - chartData.length * barWidth) / (chartData.length + 1) : 0;
 
   // CSV Export functionality
   const handleExportCSV = () => {
@@ -86,7 +139,7 @@ export const FeedingLogView: React.FC = () => {
           </p>
           <div className="flex items-baseline gap-1">
             <span className="text-5xl font-black text-slate-900 font-mono-code tracking-tight">
-              {loading ? '-' : allRecords.length > 0 ? '98.2' : '-'}
+              {loading ? '-' : averageConfidence !== null ? averageConfidence : allRecords.length > 0 ? '-' : '-'}
             </span>
             <span className="text-2xl font-bold text-slate-600 font-mono-code">
               %
@@ -159,6 +212,101 @@ export const FeedingLogView: React.FC = () => {
           <span>EKSPOR CSV</span>
         </button>
       </div>
+
+      {/* Chart: Histori Aktivitas Pakan */}
+      {!loading && !error && chartData.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-xs space-y-4">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-800 font-mono-code">
+            <BarChart2 className="w-3.5 h-3.5 text-slate-600" />
+            <span>GRAFIK AKTIVITAS PEMBERIAN PAKAN</span>
+          </div>
+          <div className="relative h-64">
+            <svg width="100%" height="100%" viewBox="0 0 800 256" preserveAspectRatio="none" className="w-full h-full">
+              <defs>
+                <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#0284c7" stopOpacity="0.6" />
+                </linearGradient>
+              </defs>
+              {chartData.map((item, idx) => {
+                const barHeight = Math.max(4, (item.count / maxCount) * 200);
+                const x = gap + idx * (barWidth + gap);
+                const y = 230 - barHeight;
+                const dateLabel = item.date.split('-').slice(1).join('/');
+                return (
+                  <g key={idx}>
+                    <rect
+                      x={x}
+                      y={y}
+                      width={barWidth}
+                      height={barHeight}
+                      fill="url(#barGradient)"
+                      rx={2}
+                      ry={2}
+                      className="transition-all duration-300 hover:opacity-80 cursor-pointer"
+                    />
+                    <text
+                      x={x + barWidth / 2}
+                      y={248}
+                      textAnchor="middle"
+                      fontSize="10"
+                      fill="#64748b"
+                      fontFamily="monospace"
+                      className="pointer-events-none"
+                    >
+                      {dateLabel}
+                    </text>
+                    <text
+                      x={x + barWidth / 2}
+                      y={y - 6}
+                      textAnchor="middle"
+                      fontSize="10"
+                      fill="#0ea5e9"
+                      fontFamily="monospace"
+                      fontWeight="bold"
+                      className="pointer-events-none"
+                    >
+                      {item.count}
+                    </text>
+                  </g>
+                );
+              })}
+              {/* Y-axis grid lines */}
+              {[maxCount, Math.ceil(maxCount / 2), 0].map((val, i) => (
+                <line
+                  key={i}
+                  x1={0}
+                  y1={230 - (val / maxCount) * 200}
+                  x2={800}
+                  y2={230 - (val / maxCount) * 200}
+                  stroke="#e2e8f0"
+                  strokeWidth="1"
+                  strokeDasharray="4,4"
+                />
+              ))}
+              {/* X-axis */}
+              <line x1={0} y1={230} x2={800} y2={230} stroke="#cbd5e1" strokeWidth="1" />
+              {/* Y-axis labels */}
+              {[maxCount, Math.ceil(maxCount / 2), 0].map((val, i) => (
+                <text
+                  key={i}
+                  x={-10}
+                  y={230 - (val / maxCount) * 200 + 4}
+                  textAnchor="end"
+                  fontSize="10"
+                  fill="#94a3b8"
+                  fontFamily="monospace"
+                >
+                  {val}
+                </text>
+              ))}
+            </svg>
+          </div>
+          <p className="text-[10px] text-slate-500 font-mono-code">
+            Menampilkan {chartData.length} hari dengan aktivitas pakan
+          </p>
+        </div>
+      )}
 
       {/* Main Table */}
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-xs">

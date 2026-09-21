@@ -183,7 +183,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 
 // ======================================================
-// PUT: Update jadwal (toggle aktif/nonaktif)
+// PUT: Update jadwal (full update)
 // ======================================================
 
 if ($_SERVER["REQUEST_METHOD"] === "PUT") {
@@ -197,23 +197,85 @@ if ($_SERVER["REQUEST_METHOD"] === "PUT") {
     }
 
     $id = $input["id"] ?? null;
-    $is_active = $input["is_active"] ?? null;
 
-    if (empty($id) || $is_active === null) {
+    if (empty($id)) {
         http_response_code(400);
         echo json_encode([
             "success" => false,
-            "message" => "Missing required fields.",
-            "required" => ["id", "is_active"]
+            "message" => "Missing required field: id"
         ]);
         exit;
     }
 
-    $active_val = $is_active ? 1 : 0;
+    $schedule_type = $input["schedule_type"] ?? null;
+    $feeding_time = $input["feeding_time"] ?? null;
+    $active_days = $input["active_days"] ?? null;
+    $duration_seconds = $input["duration_seconds"] ?? null;
+    $intensity_percent = $input["intensity_percent"] ?? null;
+    $is_active = $input["is_active"] ?? null;
 
-    $sql = "UPDATE feeding_schedules SET is_active = ? WHERE id = ?";
+    $updates = [];
+    $params = [];
+    $types = "";
+
+    if ($schedule_type !== null) {
+        $allowed_type = ["Interval Tetap", "Berbasis AI"];
+        if (!in_array($schedule_type, $allowed_type)) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => "Invalid schedule_type.",
+                "allowed" => $allowed_type
+            ]);
+            exit;
+        }
+        $updates[] = "schedule_type = ?";
+        $params[] = $schedule_type;
+        $types .= "s";
+    }
+
+    if ($feeding_time !== null) {
+        $updates[] = "feeding_time = ?";
+        $params[] = $feeding_time;
+        $types .= "s";
+    }
+
+    if ($active_days !== null) {
+        $updates[] = "active_days = ?";
+        $params[] = json_encode($active_days);
+        $types .= "s";
+    }
+
+    if ($duration_seconds !== null) {
+        $updates[] = "duration_seconds = ?";
+        $params[] = (int)$duration_seconds;
+        $types .= "i";
+    }
+
+    if ($intensity_percent !== null) {
+        $updates[] = "intensity_percent = ?";
+        $params[] = (int)$intensity_percent;
+        $types .= "i";
+    }
+
+    if ($is_active !== null) {
+        $updates[] = "is_active = ?";
+        $params[] = $is_active ? 1 : 0;
+        $types .= "i";
+    }
+
+    if (empty($updates)) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "No fields to update."]);
+        exit;
+    }
+
+    $params[] = $id;
+    $types .= "i";
+
+    $sql = "UPDATE feeding_schedules SET " . implode(", ", $updates) . " WHERE id = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ii", $active_val, $id);
+    $stmt->bind_param($types, ...$params);
 
     if ($stmt->execute()) {
         http_response_code(200);

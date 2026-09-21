@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, Edit2, Trash2 } from 'lucide-react';
 import { FeedingScheduleItem } from '../../types';
 import { API_BASE } from '../../config/api';
+import { EditScheduleModal } from '../modals/EditScheduleModal';
 
 interface SchedulerViewProps {
   onOpenNewScheduleModal: () => void;
@@ -18,6 +19,9 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
   const [schedules, setSchedules] = useState<FeedingScheduleItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [editSchedule, setEditSchedule] = useState<FeedingScheduleItem | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
 
   const fetchSchedules = useCallback(async () => {
     setLoading(true);
@@ -63,8 +67,41 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
     }
   };
 
+  const handleOpenEdit = (schedule: FeedingScheduleItem) => {
+    setEditSchedule(schedule);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditClose = () => {
+    setIsEditModalOpen(false);
+    setEditSchedule(null);
+  };
+
+  const handleEditSuccess = () => {
+    fetchSchedules();
+    handleEditClose();
+  };
+
+  const handleDelete = async (schedule: FeedingScheduleItem) => {
+    if (!window.confirm('Yakin ingin menghapus jadwal ini?')) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/feeding_schedules.php?id=${schedule.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (json.success) {
+        setSchedules((prev) => prev.filter((s) => s.id !== schedule.id));
+      }
+    } catch {
+      // silently fail
+    }
+  };
+
   return (
-    <div id="scheduler-view" className="p-8 max-w-7xl mx-auto space-y-6">
+    <>
+      <div id="scheduler-view" className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-tech uppercase">
@@ -218,40 +255,61 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
             {!loading && !error && schedules.length > 0 && (
               <div className="overflow-hidden">
                 <table className="w-full text-left text-xs font-mono-code">
-                  <thead>
-                    <tr className="text-[10px] text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100 pb-2">
-                      <th className="pb-2">ID</th>
-                      <th className="pb-2">TIPE</th>
-                      <th className="pb-2 text-right">STATUS</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {schedules.map((sched) => (
-                      <tr
-                        key={sched.id}
-                        className="hover:bg-slate-50/60 transition-colors cursor-pointer"
-                        onClick={() => handleToggleActive(sched)}
-                      >
-                        <td className="py-3 font-semibold text-slate-800">
-                          {sched.schedule_code}
-                        </td>
-                        <td className={`py-3 ${sched.schedule_type === 'Berbasis AI' ? 'text-[#0ea5e9] font-medium' : 'text-slate-700'}`}>
-                          {sched.schedule_type}
-                        </td>
-                        <td className="py-3 text-right">
-                          {sched.is_active ? (
-                            <span className="inline-block bg-[#0ea5e9] text-white text-[10px] font-bold px-2 py-0.5 rounded-xs tracking-wider">
-                              ONLINE
-                            </span>
-                          ) : (
-                            <span className="inline-block bg-slate-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-xs tracking-wider">
-                              SIAGA
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+<thead>
+                <tr className="text-[10px] text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100 pb-2">
+                  <th className="pb-2">ID</th>
+                  <th className="pb-2">TIPE</th>
+                  <th className="pb-2 text-right">STATUS</th>
+                  <th className="pb-2 text-right">AKSI</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {schedules.map((sched) => (
+                  <tr key={sched.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="py-3 font-semibold text-slate-800">
+                      {sched.schedule_code}
+                    </td>
+                    <td className={`py-3 ${sched.schedule_type === 'Berbasis AI' ? 'text-[#0ea5e9] font-medium' : 'text-slate-700'}`}>
+                      {sched.schedule_type}
+                    </td>
+                    <td className="py-3 text-right">
+                      {sched.is_active ? (
+                        <span className="inline-block bg-[#0ea5e9] text-white text-[10px] font-bold px-2 py-0.5 rounded-xs tracking-wider">
+                          ONLINE
+                        </span>
+                      ) : (
+                        <span className="inline-block bg-slate-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-xs tracking-wider">
+                          SIAGA
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEdit(sched);
+                          }}
+                          className="p-1.5 text-slate-500 hover:text-sky-600 hover:bg-sky-50 rounded-sm transition-colors cursor-pointer"
+                          title="Edit jadwal"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(sched);
+                          }}
+                          className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors cursor-pointer"
+                          title="Hapus jadwal"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
                 </table>
               </div>
             )}
@@ -291,5 +349,13 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
         </div>
       </div>
     </div>
+
+    <EditScheduleModal
+      isOpen={isEditModalOpen}
+      onClose={handleEditClose}
+      onScheduleUpdated={handleEditSuccess}
+      schedule={editSchedule}
+    />
+    </>
   );
 };

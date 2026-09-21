@@ -1,5 +1,15 @@
 export type ActiveTab = 'overview' | 'ai-monitor' | 'feeding-log' | 'scheduler' | 'hardware';
 
+export interface NotificationItem {
+  id: string;
+  type: 'info' | 'warning' | 'success';
+  title: string;
+  description: string;
+  timestamp: string;
+  source_table: string;
+  source_id: string | number;
+}
+
 export interface FeedingLogItem {
   id: number;
   device_id: string;

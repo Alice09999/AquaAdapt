@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ActiveTab } from './types';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
@@ -23,10 +23,19 @@ export default function App() {
   const [isSupportModalOpen, setIsSupportModalOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
   const [scheduleRefreshKey, setScheduleRefreshKey] = useState<number>(0);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState<number>(0);
 
   const handleScheduleCreated = () => {
     setScheduleRefreshKey((k) => k + 1);
   };
+
+  const handleUnreadCountChange = useCallback((count: number) => {
+    setUnreadNotificationCount(count);
+  }, []);
+
+  const handleCloseNotifications = useCallback(() => {
+    setIsNotificationsOpen(false);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans selection:bg-sky-100 selection:text-sky-800 antialiased">
@@ -48,7 +57,7 @@ export default function App() {
           setActiveTab={setActiveTab}
           onOpenSettings={() => setIsSettingsModalOpen(true)}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
-          hasUnreadNotifications={true}
+          hasUnreadNotifications={unreadNotificationCount > 0}
         />
 
         {/* Emergency Stop Active Warning Banner */}
@@ -108,7 +117,8 @@ export default function App() {
 
       <NotificationsDrawer
         isOpen={isNotificationsOpen}
-        onClose={() => setIsNotificationsOpen(false)}
+        onClose={handleCloseNotifications}
+        onUnreadCountChange={handleUnreadCountChange}
       />
     </div>
   );
