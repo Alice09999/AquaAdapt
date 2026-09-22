@@ -7,6 +7,7 @@
 $allowed_origins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'http://192.168.0.49:5173',
 ];
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';

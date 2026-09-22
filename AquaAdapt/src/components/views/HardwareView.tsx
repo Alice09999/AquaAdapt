@@ -56,12 +56,18 @@ export const HardwareView: React.FC = () => {
     deviceStatus: string | null;
     pcMonitorId: number | null;
     feedingLogId: number | null;
-    healthTimestamp: string | null;
+    healthServer: string | null;
+    healthDatabase: string | null;
+    detectionDetectedAt: string | null;
+    pcMonitorCreatedAt: string | null;
   }>({
     deviceStatus: null,
     pcMonitorId: null,
     feedingLogId: null,
-    healthTimestamp: null,
+    healthServer: null,
+    healthDatabase: null,
+    detectionDetectedAt: null,
+    pcMonitorCreatedAt: null,
   });
 
   const addLog = (level: 'INFO' | 'PERINGATAN' | 'ERROR', message: string, timestamp?: Date) => {
@@ -93,10 +99,13 @@ export const HardwareView: React.FC = () => {
 
       // Health check logs
       if (healthJson.success) {
-        if (healthJson.timestamp !== lastDataRef.current.healthTimestamp) {
+        if (healthJson.server !== lastDataRef.current.healthServer) {
           addLog('INFO', `API SERVER: ${healthJson.server.toUpperCase()}`, new Date(healthJson.timestamp));
+          lastDataRef.current.healthServer = healthJson.server;
+        }
+        if (healthJson.database !== lastDataRef.current.healthDatabase) {
           addLog('INFO', `DATABASE: ${healthJson.database.toUpperCase()}`, new Date(healthJson.timestamp));
-          lastDataRef.current.healthTimestamp = healthJson.timestamp;
+          lastDataRef.current.healthDatabase = healthJson.database;
         }
       }
 
@@ -114,20 +123,23 @@ export const HardwareView: React.FC = () => {
           lastDataRef.current.deviceStatus = deviceData.status;
         }
 
-        // PC Monitor data from status
-        if (statusJson.data.pc_monitor) {
-          const monitor = statusJson.data.pc_monitor;
-          if (monitor.id !== lastDataRef.current.pcMonitorId) {
+        // PC Monitor data from pc_monitor.php (same source as telemetry cards)
+        if (monitorJson.success && monitorJson.data) {
+          const monitor = monitorJson.data;
+          if (monitor.created_at !== null && monitor.created_at !== undefined && monitor.created_at !== lastDataRef.current.pcMonitorCreatedAt) {
             const time = monitor.created_at ? new Date(monitor.created_at) : new Date();
             addLog('INFO', `TELEMETRI UPDATE: CPU ${monitor.cpu_temp !== null ? monitor.cpu_temp + '°C' : 'N/A'} | GPU ${monitor.gpu_temp !== null ? monitor.gpu_temp + '°C' : 'N/A'} | CPU Usage ${monitor.cpu_usage !== null ? monitor.cpu_usage + '%' : 'N/A'} | RAM ${monitor.ram_usage !== null ? monitor.ram_usage + '%' : 'N/A'}`, time);
-            lastDataRef.current.pcMonitorId = monitor.id;
+            lastDataRef.current.pcMonitorCreatedAt = monitor.created_at;
           }
         }
 
         // Detection log
         if (statusJson.data.detection) {
           const det = statusJson.data.detection;
-          addLog('INFO', `DETECTION: ${det.status} (confidence: ${(det.confidence * 100).toFixed(1)}%)`, new Date(det.detected_at));
+          if (det.detected_at !== lastDataRef.current.detectionDetectedAt) {
+            addLog('INFO', `DETECTION: ${det.status} (confidence: ${(det.confidence * 100).toFixed(1)}%)`, new Date(det.detected_at));
+            lastDataRef.current.detectionDetectedAt = det.detected_at;
+          }
         }
       }
 
