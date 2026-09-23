@@ -4,9 +4,7 @@ import {
   Brain, 
   Calendar, 
   Cpu, 
-  AlertTriangle, 
   Wrench, 
-  HelpCircle,
   Droplets,
   Receipt
 } from 'lucide-react';
@@ -15,19 +13,13 @@ import { ActiveTab } from '../types';
 interface SidebarProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
-  onEmergencyStop: () => void;
   onOpenDiagnostics: () => void;
-  onOpenSupport: () => void;
-  isEmergencyActive: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
-  onEmergencyStop,
   onOpenDiagnostics,
-  onOpenSupport,
-  isEmergencyActive,
 }) => {
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
     {
@@ -109,20 +101,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Bottom Section */}
       <div className="p-4 space-y-3">
-        {/* Emergency Stop Button */}
-        <button
-          id="btn-emergency-stop-sidebar"
-          onClick={onEmergencyStop}
-          className={`w-full py-2.5 px-3 border rounded-sm flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider transition-all shadow-xs ${
-            isEmergencyActive
-              ? 'bg-red-600 text-white border-red-700 animate-pulse'
-              : 'border-[#fca5a5] text-[#dc2626] bg-[#fff1f2] hover:bg-[#ffe4e6]'
-          }`}
-        >
-          <AlertTriangle className="w-3.5 h-3.5" />
-          <span>{isEmergencyActive ? 'SISTEM DIHENTIKAN' : 'HENTIKAN DARURAT'}</span>
-        </button>
-
         {/* Utilities */}
         <div className="pt-2 border-t border-slate-100 space-y-1">
           <button
@@ -132,14 +110,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Wrench className="w-3.5 h-3.5 text-slate-400" />
             <span>Diagnostik</span>
-          </button>
-          <button
-            id="btn-sidebar-support"
-            onClick={onOpenSupport}
-            className="w-full flex items-center gap-2.5 px-2 py-1.5 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded transition-colors text-left"
-          >
-            <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-            <span>Bantuan</span>
           </button>
         </div>
       </div>
