@@ -29,20 +29,9 @@ CREATE TABLE IF NOT EXISTS `feeding_logs` (
 -- Tabel feeding_schedules
 CREATE TABLE IF NOT EXISTS `feeding_schedules` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `device_id` varchar(50) NOT NULL,
-  `schedule_code` varchar(20) NOT NULL,
-  `schedule_type` enum('Interval Tetap','Berbasis AI') NOT NULL,
   `feeding_time` time NOT NULL,
   `active_days` json NOT NULL,
-  `duration_seconds` int DEFAULT 45,
-  `intensity_percent` int DEFAULT 80,
-  `is_active` tinyint(1) DEFAULT 1,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `schedule_code` (`schedule_code`),
-  KEY `idx_feeding_schedules_device_id` (`device_id`),
-  CONSTRAINT `fk_feeding_schedules_device` FOREIGN KEY (`device_id`) REFERENCES `ai_devices` (`device_id`) ON DELETE CASCADE ON UPDATE CASCADE
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabel pc_monitor

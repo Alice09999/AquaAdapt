@@ -13,172 +13,56 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
 
 header("Content-Type: application/json");
 
-
 // ======================================================
-// KONSEP FIXED SCHEDULE
-// ======================================================
-// Sistem hanya memiliki 2 waktu FIXED untuk memulai sesi feeding:
-// - 07:00 (Sesi Pagi)
-// - 17:00 (Sesi Sore)
-//
-// AI menentukan kapan feeding BERHENTI (Hungry/FULL)
-// Schedule hanya menentukan KAPAN feeding DIMULAI
+// FIXED SCHEDULE: hanya 07:00 dan 17:00
+// Scheduler hanya mengelola feeding_time + active_days
 // ======================================================
 
-$FIXED_SCHEDULES = [
-    [
-        "id" => 1,
-        "device_id" => "AI-001",
-        "device_name" => "AI Kamera Kolam 1",
-        "schedule_code" => "#F-001",
-        "schedule_type" => "Interval Tetap",
-        "feeding_time" => "07:00:00",
-        "active_days" => ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"],
-        "duration_seconds" => 45,
-        "intensity_percent" => 80,
-        "is_active" => true,
-        "created_at" => date("Y-m-d H:i:s"),
-        "updated_at" => date("Y-m-d H:i:s"),
-        "is_fixed" => true,
-        "session_name" => "Sesi Pagi"
-    ],
-    [
-        "id" => 2,
-        "device_id" => "AI-001",
-        "device_name" => "AI Kamera Kolam 1",
-        "schedule_code" => "#F-002",
-        "schedule_type" => "Interval Tetap",
-        "feeding_time" => "17:00:00",
-        "active_days" => ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"],
-        "duration_seconds" => 45,
-        "intensity_percent" => 80,
-        "is_active" => true,
-        "created_at" => date("Y-m-d H:i:s"),
-        "updated_at" => date("Y-m-d H:i:s"),
-        "is_fixed" => true,
-        "session_name" => "Sesi Sore"
-    ]
-];
+$ALLOWED_TIMES = ["07:00", "17:00"];
+
+function normalizeTime($time) {
+    return substr(trim((string)$time), 0, 5);
+}
 
 
 // ======================================================
-// GET: Ambil jadwal pakan (Fixed Schedule: 07:00 & 17:00)
+// GET: Ambil semua jadwal (id, feeding_time, active_days)
 // ======================================================
 
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
 
-    $device_id = $_GET["device_id"] ?? null;
-
-    // Query database untuk jadwal yang sudah disimpan
-    $sql = "
-        SELECT
-            fs.id,
-            fs.device_id,
-            ai.device_name,
-            fs.schedule_code,
-            fs.schedule_type,
-            fs.feeding_time,
-            fs.active_days,
-            fs.duration_seconds,
-            fs.intensity_percent,
-            fs.is_active,
-            fs.created_at,
-            fs.updated_at
-        FROM feeding_schedules fs
-        LEFT JOIN ai_devices ai ON fs.device_id = ai.device_id
-    ";
-
-    $params = [];
-    $types = "";
-
-    if (!empty($device_id)) {
-        $sql .= " WHERE fs.device_id = ?";
-        $params[] = $device_id;
-        $types .= "s";
-    }
-
-    $sql .= " ORDER BY fs.feeding_time ASC";
-
+    $sql = "SELECT id, feeding_time, active_days FROM feeding_schedules ORDER BY feeding_time ASC";
     $stmt = $conn->prepare($sql);
-
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-
     $stmt->execute();
     $result = $stmt->get_result();
 
-    $db_schedules = [];
+    $schedules = [];
     while ($row = $result->fetch_assoc()) {
-        $db_schedules[] = [
+        $active_days = json_decode($row["active_days"], true);
+        if (is_string($active_days)) {
+            $active_days = $active_days === "" ? [] : array_map("trim", explode(",", $active_days));
+        } elseif (!is_array($active_days)) {
+            $active_days = [];
+        }
+        $schedules[] = [
             "id" => (int)$row["id"],
-            "device_id" => $row["device_id"],
-            "device_name" => $row["device_name"],
-            "schedule_code" => $row["schedule_code"],
-            "schedule_type" => $row["schedule_type"],
             "feeding_time" => $row["feeding_time"],
-            "active_days" => json_decode($row["active_days"], true),
-            "duration_seconds" => (int)$row["duration_seconds"],
-            "intensity_percent" => (int)$row["intensity_percent"],
-            "is_active" => (bool)$row["is_active"],
-            "created_at" => $row["created_at"],
-            "updated_at" => $row["updated_at"],
+            "active_days" => $active_days,
         ];
     }
-
-    $stmt->close();
-
-    // Jika database kosong, kembalikan fixed schedule default
-    // Jika database ada data, gabungkan dengan fixed schedule (prioritaskan fixed schedule)
-    $schedules = [];
-
-    // Tambahkan fixed schedule dulu (07:00 dan 17:00)
-    foreach ($FIXED_SCHEDULES as $fixed) {
-        // Cek apakah sudah ada di database dengan waktu yang sama
-        $exists = false;
-        foreach ($db_schedules as $db_sched) {
-            if (strtotime($db_sched["feeding_time"]) === strtotime($fixed["feeding_time"])) {
-                $exists = true;
-                // Gunakan data database tapi tambahkan flag fixed
-                $schedules[] = array_merge($db_sched, ["is_fixed" => true, "session_name" => $fixed["session_name"]]);
-                break;
-            }
-        }
-        if (!$exists) {
-            $schedules[] = $fixed;
-        }
-    }
-
-    // Tambahkan jadwal lain dari database yang bukan fixed schedule
-    foreach ($db_schedules as $db_sched) {
-        $is_fixed_time = false;
-        foreach ($FIXED_SCHEDULES as $fixed) {
-            if (strtotime($db_sched["feeding_time"]) === strtotime($fixed["feeding_time"])) {
-                $is_fixed_time = true;
-                break;
-            }
-        }
-        if (!$is_fixed_time) {
-            $schedules[] = $db_sched;
-        }
-    }
-
-    // Sort by feeding_time
-    usort($schedules, function($a, $b) {
-        return strtotime($a["feeding_time"]) - strtotime($b["feeding_time"]);
-    });
 
     http_response_code(200);
     echo json_encode(["success" => true, "data" => $schedules]);
 
+    $stmt->close();
     $conn->close();
     exit;
 }
 
 
 // ======================================================
-// POST: Tambah jadwal baru (Dashboard membuat jadwal)
-// Fokus pada active_days dan feeding_time, field lain pakai default
+// POST: Tambah jadwal baru
+// Wajib: feeding_time (07:00/17:00), active_days
 // ======================================================
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -191,58 +75,42 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         exit;
     }
 
-    $device_id = $input["device_id"] ?? null;
     $feeding_time = $input["feeding_time"] ?? null;
     $active_days = $input["active_days"] ?? null;
-    $schedule_type = $input["schedule_type"] ?? "Interval Tetap";
-    $duration_seconds = $input["duration_seconds"] ?? 45;
-    $intensity_percent = $input["intensity_percent"] ?? 80;
 
-    if (empty($device_id) || empty($feeding_time) || empty($active_days)) {
+    if (empty($feeding_time) || empty($active_days)) {
         http_response_code(400);
         echo json_encode([
             "success" => false,
             "message" => "Missing required fields.",
-            "required" => ["device_id", "feeding_time", "active_days"]
+            "required" => ["feeding_time", "active_days"]
         ]);
         exit;
     }
 
-    $allowed_type = ["Interval Tetap", "Berbasis AI"];
-    if (!in_array($schedule_type, $allowed_type)) {
+    $normalized = normalizeTime($feeding_time);
+    if (!in_array($normalized, $ALLOWED_TIMES, true)) {
         http_response_code(400);
         echo json_encode([
             "success" => false,
-            "message" => "Invalid schedule_type.",
-            "allowed" => $allowed_type
+            "message" => "Invalid feeding_time. Only 07:00 or 17:00 are allowed.",
+            "allowed" => $ALLOWED_TIMES
         ]);
         exit;
     }
 
-    // Generate schedule code based on schedule_type
-    $prefix = $schedule_type === "Interval Tetap" ? "F" : "A";
-    $code_num = rand(100, 999);
-    $schedule_code = "#" . $prefix . "-" . $code_num;
+    if (is_array($active_days)) {
+        $active_days_value = array_values($active_days);
+    } else {
+        $active_days_value = $active_days;
+    }
 
-    $active_days_json = json_encode($active_days);
+    $feeding_time_db = $normalized . ":00";
+    $active_days_json = json_encode($active_days_value);
 
-    $sql = "
-        INSERT INTO feeding_schedules
-        (device_id, schedule_code, schedule_type, feeding_time, active_days, duration_seconds, intensity_percent)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ";
-
+    $sql = "INSERT INTO feeding_schedules (feeding_time, active_days) VALUES (?, ?)";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param(
-        "sssssii",
-        $device_id,
-        $schedule_code,
-        $schedule_type,
-        $feeding_time,
-        $active_days_json,
-        $duration_seconds,
-        $intensity_percent
-    );
+    $stmt->bind_param("ss", $feeding_time_db, $active_days_json);
 
     if ($stmt->execute()) {
         http_response_code(201);
@@ -251,14 +119,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             "message" => "Schedule created.",
             "data" => [
                 "id" => $stmt->insert_id,
-                "device_id" => $device_id,
-                "schedule_code" => $schedule_code,
-                "schedule_type" => $schedule_type,
-                "feeding_time" => $feeding_time,
-                "active_days" => $active_days,
-                "duration_seconds" => $duration_seconds,
-                "intensity_percent" => $intensity_percent,
-                "is_active" => true,
+                "feeding_time" => $feeding_time_db,
+                "active_days" => $active_days_value,
             ]
         ]);
     } else {
@@ -273,8 +135,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 
 // ======================================================
-// PUT: Update jadwal (Dashboard mengubah jadwal)
-// Fokus pada active_days dan feeding_time, field lain opsional
+// PUT: Update jadwal berdasarkan id
+// Bisa update feeding_time dan/atau active_days
 // ======================================================
 
 if ($_SERVER["REQUEST_METHOD"] === "PUT") {
@@ -298,61 +160,34 @@ if ($_SERVER["REQUEST_METHOD"] === "PUT") {
         exit;
     }
 
-    $schedule_type = $input["schedule_type"] ?? null;
     $feeding_time = $input["feeding_time"] ?? null;
     $active_days = $input["active_days"] ?? null;
-    $duration_seconds = $input["duration_seconds"] ?? null;
-    $intensity_percent = $input["intensity_percent"] ?? null;
-    $is_active = $input["is_active"] ?? null;
 
     $updates = [];
     $params = [];
     $types = "";
 
-    if ($schedule_type !== null) {
-        $allowed_type = ["Interval Tetap", "Berbasis AI"];
-        if (!in_array($schedule_type, $allowed_type)) {
+    if ($feeding_time !== null && $feeding_time !== "") {
+        $normalized = normalizeTime($feeding_time);
+        if (!in_array($normalized, $ALLOWED_TIMES, true)) {
             http_response_code(400);
             echo json_encode([
                 "success" => false,
-                "message" => "Invalid schedule_type.",
-                "allowed" => $allowed_type
+                "message" => "Invalid feeding_time. Only 07:00 or 17:00 are allowed.",
+                "allowed" => $ALLOWED_TIMES
             ]);
             exit;
         }
-        $updates[] = "schedule_type = ?";
-        $params[] = $schedule_type;
-        $types .= "s";
-    }
-
-    if ($feeding_time !== null) {
         $updates[] = "feeding_time = ?";
-        $params[] = $feeding_time;
+        $params[] = $normalized . ":00";
         $types .= "s";
     }
 
-    if ($active_days !== null) {
+    if ($active_days !== null && $active_days !== "") {
+        $active_days_value = is_array($active_days) ? array_values($active_days) : $active_days;
         $updates[] = "active_days = ?";
-        $params[] = json_encode($active_days);
+        $params[] = json_encode($active_days_value);
         $types .= "s";
-    }
-
-    if ($duration_seconds !== null) {
-        $updates[] = "duration_seconds = ?";
-        $params[] = (int)$duration_seconds;
-        $types .= "i";
-    }
-
-    if ($intensity_percent !== null) {
-        $updates[] = "intensity_percent = ?";
-        $params[] = (int)$intensity_percent;
-        $types .= "i";
-    }
-
-    if ($is_active !== null) {
-        $updates[] = "is_active = ?";
-        $params[] = $is_active ? 1 : 0;
-        $types .= "i";
     }
 
     if (empty($updates)) {
@@ -383,7 +218,7 @@ if ($_SERVER["REQUEST_METHOD"] === "PUT") {
 
 
 // ======================================================
-// DELETE: Hapus jadwal (Dashboard menghapus jadwal)
+// DELETE: Hapus jadwal berdasarkan id
 // ======================================================
 
 if ($_SERVER["REQUEST_METHOD"] === "DELETE") {

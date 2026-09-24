@@ -15,7 +15,7 @@ header("Content-Type: application/json");
 
 
 // ======================================================
-// GET: Ambil data riwayat pakan
+// GET: Ambil data riwayat pakan (Dashboard membaca)
 // ======================================================
 
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
@@ -186,7 +186,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
 
 
 // ======================================================
-// POST: Catat event pakan baru
+// POST: Catat event pakan baru (Jetson Nano mengirim)
 // ======================================================
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {

@@ -6,7 +6,7 @@ require_once "config.php";
 
 
 // ======================================================
-// GET: Check device status and update offline devices
+// GET: Check device status and update offline devices (Dashboard polling)
 // ======================================================
 
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
@@ -54,7 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
 
 
 // ======================================================
-// HANYA MENERIMA POST
+// HANYA MENERIMA POST (Jetson Nano mengirim heartbeat)
 // ======================================================
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {

@@ -10,30 +10,24 @@ interface EditScheduleModalProps {
   schedule: FeedingScheduleItem | null;
 }
 
+const ALLOWED_TIMES = ['07:00', '17:00'];
+
 export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   isOpen,
   onClose,
   onScheduleUpdated,
   schedule,
 }) => {
-  const [scheduleType, setScheduleType] = useState<'Interval Tetap' | 'Berbasis AI'>('Interval Tetap');
   const [time, setTime] = useState<string>('07:00');
-  const [selectedDays, setSelectedDays] = useState<string[]>(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat']);
-  const [duration, setDuration] = useState<string>('45');
-  const [intensity, setIntensity] = useState<string>('80');
-  const [isActive, setIsActive] = useState<boolean>(true);
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const daysList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
   useEffect(() => {
     if (schedule) {
-      setScheduleType(schedule.schedule_type);
       setTime(schedule.feeding_time.slice(0, 5));
-      setSelectedDays(schedule.active_days);
-      setDuration(String(schedule.duration_seconds));
-      setIntensity(String(schedule.intensity_percent));
-      setIsActive(schedule.is_active);
+      setSelectedDays(Array.isArray(schedule.active_days) ? schedule.active_days : []);
       setSubmitError(null);
     }
   }, [schedule]);
@@ -50,6 +44,17 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!ALLOWED_TIMES.includes(time)) {
+      setSubmitError('Waktu pemberian hanya boleh 07:00 atau 17:00.');
+      return;
+    }
+
+    if (selectedDays.length === 0) {
+      setSubmitError('Pilih minimal satu hari aktif.');
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError(null);
 
@@ -59,12 +64,8 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: schedule.id,
-          schedule_type: scheduleType,
           feeding_time: time,
           active_days: selectedDays,
-          duration_seconds: parseInt(duration, 10),
-          intensity_percent: parseInt(intensity, 10),
-          is_active: isActive,
         }),
       });
 
@@ -124,7 +125,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
               EDIT JADWAL PAKAN
             </h3>
           </div>
-          <button
+          <button 
             onClick={onClose}
             className="p-1 text-slate-400 hover:text-slate-700 rounded-sm"
           >
@@ -141,57 +142,22 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono-code">
-              KODE JADWAL
-            </label>
-            <input
-              type="text"
-              value={schedule.schedule_code}
-              readOnly
-              className="w-full bg-slate-50 border border-slate-200 rounded-md py-2 px-3 text-sm font-mono-code font-bold text-slate-500 cursor-not-allowed"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono-code">
-              TIPE PROTOKOL
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setScheduleType('Interval Tetap')}
-                className={`py-2.5 px-3 border rounded-md text-xs font-semibold text-center transition-all cursor-pointer ${
-                  scheduleType === 'Interval Tetap'
-                    ? 'border-sky-500 bg-sky-50 text-sky-700 shadow-xs'
-                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                Interval Tetap (Timer)
-              </button>
-              <button
-                type="button"
-                onClick={() => setScheduleType('Berbasis AI')}
-                className={`py-2.5 px-3 border rounded-md text-xs font-semibold text-center transition-all cursor-pointer ${
-                  scheduleType === 'Berbasis AI'
-                    ? 'border-sky-500 bg-sky-50 text-sky-700 shadow-xs'
-                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                Berbasis AI (Adaptif)
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono-code">
               WAKTU PEMBERIAN (WIB)
             </label>
-            <input
-              type="time"
+            <select
+              id="select-edit-schedule-time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-md py-2 px-3 text-sm font-mono-code font-bold text-slate-900 focus:border-sky-500 focus:outline-hidden"
+              className="w-full bg-white border border-slate-300 rounded-md py-2 px-3 text-sm font-mono-code font-bold text-slate-900 focus:border-sky-500 focus:outline-hidden cursor-pointer"
               required
-            />
+            >
+              {ALLOWED_TIMES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-slate-400 font-mono-code">
+              Hanya tersedia 07:00 (sesi pagi) atau 17:00 (sesi sore).
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -217,47 +183,6 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 );
               })}
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 pt-1">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-600 tracking-wider uppercase font-mono-code block">
-                DURASI (DETIK)
-              </label>
-              <input
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                min="1"
-                max="300"
-                className="w-full bg-white border border-slate-300 rounded-sm py-2 px-3 text-lg font-mono-code font-bold text-slate-900 shadow-2xs focus:border-sky-500 focus:outline-hidden"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-600 tracking-wider uppercase font-mono-code block">
-                INTENSITAS (%)
-              </label>
-              <input
-                type="number"
-                value={intensity}
-                onChange={(e) => setIntensity(e.target.value)}
-                min="1"
-                max="100"
-                className="w-full bg-white border border-slate-300 rounded-sm py-2 px-3 text-lg font-mono-code font-bold text-slate-900 shadow-2xs focus:border-sky-500 focus:outline-hidden"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono-code flex items-center gap-2">
-              STATUS
-              <input
-                type="checkbox"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="w-4 h-4 accent-sky-500 border-slate-300 rounded cursor-pointer"
-              />
-            </label>
           </div>
 
           <div className="pt-3 border-t border-slate-200 flex items-center justify-between">

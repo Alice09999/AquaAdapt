@@ -38,17 +38,8 @@ interface FeedingLog {
 
 interface FeedingSchedule {
   id: number;
-  device_id: string;
-  device_name: string;
-  schedule_code: string;
-  schedule_type: string;
   feeding_time: string;
   active_days: string[];
-  duration_seconds: number;
-  intensity_percent: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
 }
 
 interface Device {
@@ -156,7 +147,7 @@ export const OverviewView: React.FC = () => {
   });
 
   const todaySchedules = schedules
-    .filter((s) => s.is_active && s.active_days.includes(todayName))
+    .filter((s) => Array.isArray(s.active_days) && s.active_days.includes(todayName))
     .sort((a, b) => a.feeding_time.localeCompare(b.feeding_time));
 
   const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;

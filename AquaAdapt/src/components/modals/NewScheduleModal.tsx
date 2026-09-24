@@ -8,14 +8,15 @@ interface NewScheduleModalProps {
   onScheduleCreated: () => void;
 }
 
+const ALLOWED_TIMES = ['07:00', '17:00'];
+
 export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
   isOpen,
   onClose,
   onScheduleCreated,
 }) => {
-  const [scheduleType, setScheduleType] = useState<'Interval Tetap' | 'Berbasis AI'>('Interval Tetap');
   const [time, setTime] = useState<string>('07:00');
-  const [selectedDays, setSelectedDays] = useState<string[]>(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat']);
+  const [selectedDays, setSelectedDays] = useState<string[]>(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const daysList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
@@ -32,6 +33,17 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!ALLOWED_TIMES.includes(time)) {
+      setSubmitError('Waktu pemberian hanya boleh 07:00 atau 17:00.');
+      return;
+    }
+
+    if (selectedDays.length === 0) {
+      setSubmitError('Pilih minimal satu hari aktif.');
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError(null);
 
@@ -40,8 +52,6 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          device_id: 'AI-001',
-          schedule_type: scheduleType,
           feeding_time: time,
           active_days: selectedDays,
         }),
@@ -94,45 +104,22 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono-code">
-              TIPE PROTOKOL
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setScheduleType('Interval Tetap')}
-                className={`py-2.5 px-3 border rounded-md text-xs font-semibold text-center transition-all cursor-pointer ${
-                  scheduleType === 'Interval Tetap'
-                    ? 'border-sky-500 bg-sky-50 text-sky-700 shadow-xs'
-                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                Interval Tetap (Timer)
-              </button>
-              <button
-                type="button"
-                onClick={() => setScheduleType('Berbasis AI')}
-                className={`py-2.5 px-3 border rounded-md text-xs font-semibold text-center transition-all cursor-pointer ${
-                  scheduleType === 'Berbasis AI'
-                    ? 'border-sky-500 bg-sky-50 text-sky-700 shadow-xs'
-                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                Berbasis AI (Adaptif)
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono-code">
               WAKTU PEMBERIAN (WIB)
             </label>
-            <input
-              type="time"
+            <select
+              id="select-new-schedule-time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-md py-2 px-3 text-sm font-mono-code font-bold text-slate-900 focus:border-sky-500 focus:outline-hidden"
+              className="w-full bg-white border border-slate-300 rounded-md py-2 px-3 text-sm font-mono-code font-bold text-slate-900 focus:border-sky-500 focus:outline-hidden cursor-pointer"
               required
-            />
+            >
+              {ALLOWED_TIMES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-slate-400 font-mono-code">
+              Hanya tersedia 07:00 (sesi pagi) atau 17:00 (sesi sore).
+            </p>
           </div>
 
           <div className="space-y-2">

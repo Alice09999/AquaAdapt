@@ -92,16 +92,8 @@ CREATE TABLE `feeding_logs` (
 
 CREATE TABLE `feeding_schedules` (
   `id` int NOT NULL,
-  `device_id` varchar(50) NOT NULL,
-  `schedule_code` varchar(20) NOT NULL,
-  `schedule_type` enum('Interval Tetap','Berbasis AI') NOT NULL,
   `feeding_time` time NOT NULL,
-  `active_days` json NOT NULL,
-  `duration_seconds` int DEFAULT 45,
-  `intensity_percent` int DEFAULT 80,
-  `is_active` tinyint(1) DEFAULT 1,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `active_days` json NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -133,25 +125,17 @@ ALTER TABLE `feeding_logs`
 -- Indexes for table `feeding_schedules`
 --
 ALTER TABLE `feeding_schedules`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `schedule_code` (`schedule_code`),
-  ADD KEY `idx_feeding_schedules_device_id` (`device_id`);
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Constraints for dumped tables
 --
-
 --
 -- Constraints for table `feeding_logs`
 --
+
 ALTER TABLE `feeding_logs`
   ADD CONSTRAINT `fk_feeding_logs_device` FOREIGN KEY (`device_id`) REFERENCES `ai_devices` (`device_id`) ON DELETE CASCADE ON UPDATE CASCADE;
---
--- Constraints for table `feeding_schedules`
---
-
-ALTER TABLE `feeding_schedules`
-  ADD CONSTRAINT `fk_feeding_schedules_device` FOREIGN KEY (`device_id`) REFERENCES `ai_devices` (`device_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Table structure for table `pc_monitor`

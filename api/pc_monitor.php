@@ -15,7 +15,7 @@ header("Content-Type: application/json");
 
 
 // ======================================================
-// GET: Ambil data pc_monitor terakhir
+// GET: Ambil data pc_monitor terakhir (Dashboard membaca)
 // ======================================================
 
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
@@ -89,95 +89,95 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
 
 
 // ======================================================
-// HANYA MENERIMA POST
+// POST: Terima data monitoring hardware dari Jetson Nano
 // ======================================================
 
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    http_response_code(405);
+    $input = json_decode(file_get_contents("php://input"), true);
 
-    echo json_encode([
-        "success" => false,
-        "message" => "Method not allowed. Use POST."
-    ]);
+    if ($input === null) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "Invalid JSON."]);
+        exit;
+    }
 
+    $device_id = $input["device_id"] ?? null;
+    $cpu_usage = $input["cpu_usage"] ?? null;
+    $ram_usage = $input["ram_usage"] ?? null;
+    $cpu_temp  = $input["cpu_temp"] ?? null;
+    $gpu_temp  = $input["gpu_temp"] ?? null;
+
+    if (empty($device_id) || $cpu_usage === null || $ram_usage === null) {
+        http_response_code(400);
+        echo json_encode([
+            "success" => false,
+            "message" => "Missing required fields.",
+            "required" => ["device_id", "cpu_usage", "ram_usage"]
+        ]);
+        exit;
+    }
+
+    if (!is_numeric($cpu_usage) || $cpu_usage < 0 || $cpu_usage > 100) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "cpu_usage must be a number between 0 and 100."]);
+        exit;
+    }
+
+    if (!is_numeric($ram_usage) || $ram_usage < 0 || $ram_usage > 100) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "ram_usage must be a number between 0 and 100."]);
+        exit;
+    }
+
+    if ($cpu_temp !== null && (!is_numeric($cpu_temp) || $cpu_temp < -50 || $cpu_temp > 150)) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "cpu_temp must be a valid temperature."]);
+        exit;
+    }
+
+    if ($gpu_temp !== null && (!is_numeric($gpu_temp) || $gpu_temp < -50 || $gpu_temp > 150)) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "gpu_temp must be a valid temperature."]);
+        exit;
+    }
+
+    $sql = "
+        INSERT INTO pc_monitor (device_id, cpu_usage, ram_usage, cpu_temp, gpu_temp, created_at)
+        VALUES (?, ?, ?, ?, ?, NOW())
+    ";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("sdddd", $device_id, $cpu_usage, $ram_usage, $cpu_temp, $gpu_temp);
+
+    if ($stmt->execute()) {
+        http_response_code(201);
+        echo json_encode([
+            "success" => true,
+            "message" => "PC monitor data recorded successfully.",
+            "data" => [
+                "id" => $stmt->insert_id,
+                "device_id" => $device_id,
+                "cpu_usage" => (float)$cpu_usage,
+                "ram_usage" => (float)$ram_usage,
+                "cpu_temp" => $cpu_temp !== null ? (float)$cpu_temp : null,
+                "gpu_temp" => $gpu_temp !== null ? (float)$gpu_temp : null
+            ]
+        ]);
+    } else {
+        http_response_code(500);
+        echo json_encode(["success" => false, "message" => "Failed to save data to database."]);
+    }
+
+    $stmt->close();
+    $conn->close();
     exit;
 }
 
-$input = json_decode(file_get_contents("php://input"), true);
 
-if ($input === null) {
-    http_response_code(400);
-    echo json_encode(["success" => false, "message" => "Invalid JSON."]);
-    exit;
-}
+// ======================================================
+// Method tidak dikenal
+// ======================================================
 
-$device_id = $input["device_id"] ?? null;
-$cpu_usage = $input["cpu_usage"] ?? null;
-$ram_usage = $input["ram_usage"] ?? null;
-$cpu_temp  = $input["cpu_temp"] ?? null;
-$gpu_temp  = $input["gpu_temp"] ?? null;
-
-if (empty($device_id) || $cpu_usage === null || $ram_usage === null) {
-    http_response_code(400);
-    echo json_encode([
-        "success" => false,
-        "message" => "Missing required fields.",
-        "required" => ["device_id", "cpu_usage", "ram_usage"]
-    ]);
-    exit;
-}
-
-if (!is_numeric($cpu_usage) || $cpu_usage < 0 || $cpu_usage > 100) {
-    http_response_code(400);
-    echo json_encode(["success" => false, "message" => "cpu_usage must be a number between 0 and 100."]);
-    exit;
-}
-
-if (!is_numeric($ram_usage) || $ram_usage < 0 || $ram_usage > 100) {
-    http_response_code(400);
-    echo json_encode(["success" => false, "message" => "ram_usage must be a number between 0 and 100."]);
-    exit;
-}
-
-if ($cpu_temp !== null && (!is_numeric($cpu_temp) || $cpu_temp < -50 || $cpu_temp > 150)) {
-    http_response_code(400);
-    echo json_encode(["success" => false, "message" => "cpu_temp must be a valid temperature."]);
-    exit;
-}
-
-if ($gpu_temp !== null && (!is_numeric($gpu_temp) || $gpu_temp < -50 || $gpu_temp > 150)) {
-    http_response_code(400);
-    echo json_encode(["success" => false, "message" => "gpu_temp must be a valid temperature."]);
-    exit;
-}
-
-$sql = "
-    INSERT INTO pc_monitor (device_id, cpu_usage, ram_usage, cpu_temp, gpu_temp, created_at)
-    VALUES (?, ?, ?, ?, ?, NOW())
-";
-
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("sdddd", $device_id, $cpu_usage, $ram_usage, $cpu_temp, $gpu_temp);
-
-if ($stmt->execute()) {
-    http_response_code(201);
-    echo json_encode([
-        "success" => true,
-        "message" => "PC monitor data recorded successfully.",
-        "data" => [
-            "id" => $stmt->insert_id,
-            "device_id" => $device_id,
-            "cpu_usage" => (float)$cpu_usage,
-            "ram_usage" => (float)$ram_usage,
-            "cpu_temp" => $cpu_temp !== null ? (float)$cpu_temp : null,
-            "gpu_temp" => $gpu_temp !== null ? (float)$gpu_temp : null
-        ]
-    ]);
-} else {
-    http_response_code(500);
-    echo json_encode(["success" => false, "message" => "Failed to save data to database."]);
-}
-
-$stmt->close();
-$conn->close();
+http_response_code(405);
+echo json_encode(["success" => false, "message" => "Method not allowed. Use GET or POST."]);
