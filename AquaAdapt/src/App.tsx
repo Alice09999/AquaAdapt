@@ -14,6 +14,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
   const [isNewScheduleModalOpen, setIsNewScheduleModalOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [scheduleRefreshKey, setScheduleRefreshKey] = useState<number>(0);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState<number>(0);
 
@@ -36,7 +37,19 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenDiagnostics={() => setActiveTab('hardware')}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
+
+      {/* Mobile sidebar overlay */}
+      {isSidebarOpen && (
+        <div
+          id="sidebar-overlay"
+          className="fixed inset-0 z-30 bg-slate-900/50 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -46,6 +59,7 @@ export default function App() {
           setActiveTab={setActiveTab}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           hasUnreadNotifications={unreadNotificationCount > 0}
+          onOpenSidebar={() => setIsSidebarOpen(true)}
         />
 
         <main className="flex-1 pb-12">

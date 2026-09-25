@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, Menu } from 'lucide-react';
 import { ActiveTab } from '../types';
 
 interface TopBarProps {
@@ -7,6 +7,7 @@ interface TopBarProps {
   setActiveTab: (tab: ActiveTab) => void;
   onOpenNotifications: () => void;
   hasUnreadNotifications?: boolean;
+  onOpenSidebar?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -14,9 +15,10 @@ export const TopBar: React.FC<TopBarProps> = ({
   setActiveTab,
   onOpenNotifications,
   hasUnreadNotifications = true,
+  onOpenSidebar,
 }) => {
   const topTabs: { id: ActiveTab; label: string }[] = [
-    { id: 'overview', label: 'Dasbor' },
+    { id: 'overview', label: 'DASHBOARD' },
     { id: 'feeding-log', label: 'Riwayat' },
     { id: 'scheduler', label: 'Jadwal' },
     { id: 'hardware', label: 'Perangkat' },
@@ -25,9 +27,20 @@ export const TopBar: React.FC<TopBarProps> = ({
   return (
     <header 
       id="aqua-topbar" 
-      className="bg-white border-b border-slate-200 px-8 py-3 flex items-center justify-between sticky top-0 z-20"
+      className="bg-white border-b border-slate-200 px-4 md:px-6 lg:px-8 py-3 flex items-center justify-between sticky top-0 z-20"
     >
-      <div className="flex items-center gap-10">
+      <div className="flex items-center gap-4 md:gap-6 lg:gap-10 min-w-0">
+        {/* Mobile hamburger */}
+        <button
+          id="btn-hamburger"
+          type="button"
+          onClick={onOpenSidebar}
+          className="md:hidden p-2 -ml-2 shrink-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+          aria-label="Buka menu navigasi"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
         {/* Brand */}
         <span 
           onClick={() => setActiveTab('overview')} 
@@ -37,7 +50,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         </span>
 
         {/* Navigation Tabs */}
-        <nav className="flex items-center gap-8 text-[13px] font-medium text-slate-600">
+        <nav className="hidden md:flex items-center gap-4 lg:gap-8 text-[13px] font-medium text-slate-600">
           {topTabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (

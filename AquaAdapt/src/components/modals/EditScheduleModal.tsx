@@ -117,7 +117,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-lg max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-lg max-w-lg w-full max-h-[calc(100vh-2rem)] flex flex-col border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2.5">
             <Calendar className="w-5 h-5 text-sky-500" />
@@ -133,7 +133,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
           {submitError && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-md text-xs text-red-700 font-mono-code">
               {submitError}

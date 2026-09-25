@@ -79,8 +79,8 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
 
   return (
     <>
-      <div id="scheduler-view" className="p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex items-start justify-between">
+      <div id="scheduler-view" className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-tech uppercase">
             PROTOKOL PENJADWAL
@@ -107,34 +107,34 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
             </h2>
           </div>
 
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-2 overflow-x-auto">
             {loading ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-[340px] items-center gap-4">
                   <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">SEN 00:00</span>
                   <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-[340px] items-center gap-4">
                   <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">SEL 00:00</span>
                   <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-[340px] items-center gap-4">
                   <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">RAB 00:00</span>
                   <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-[340px] items-center gap-4">
                   <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">KAM 00:00</span>
                   <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-[340px] items-center gap-4">
                   <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">JUM 00:00</span>
                   <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-[340px] items-center gap-4">
                   <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">SAB 00:00</span>
                   <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-[340px] items-center gap-4">
                   <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">MIN 00:00</span>
                   <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm animate-pulse" />
                 </div>
@@ -150,7 +150,7 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
                     .sort((a, b) => a.feeding_time.localeCompare(b.feeding_time));
 
                   return (
-                    <div key={label} className="flex items-center gap-4">
+                    <div key={label} className="flex min-w-[340px] items-center gap-4">
                       <span className="w-20 text-xs font-mono-code font-semibold text-slate-600 shrink-0">{label} 00:00</span>
                       <div className="flex-1 h-9 bg-slate-100/90 border border-slate-200/80 rounded-sm relative overflow-hidden flex items-center">
                         {daySchedules.length === 0 && (
@@ -209,25 +209,25 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
 
             {!loading && !error && schedules.length > 0 && (
               <div className="overflow-hidden">
-                <table className="w-full text-left text-xs font-mono-code">
+                <table className="w-full table-fixed text-left text-xs font-mono-code">
                   <thead>
                     <tr className="text-[10px] text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100 pb-2">
-                      <th className="pb-2">WAKTU</th>
-                      <th className="pb-2">HARI AKTIF</th>
-                      <th className="pb-2 text-right">AKSI</th>
+                      <th className="pb-2 w-16 pr-3">WAKTU</th>
+                      <th className="pb-2 pr-3">HARI AKTIF</th>
+                      <th className="pb-2 w-20 pl-2 text-right">AKSI</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {schedules.map((sched) => (
                       <tr key={sched.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3 font-semibold text-slate-800 whitespace-nowrap">
+                        <td className="py-3 pr-3 font-semibold text-slate-800 whitespace-nowrap align-top">
                           {sched.feeding_time.slice(0, 5)}
                         </td>
-                        <td className="py-3 text-slate-700" title={Array.isArray(sched.active_days) ? sched.active_days.join(', ') : ''}>
+                        <td className="py-3 pr-3 text-slate-700 leading-relaxed align-top" title={Array.isArray(sched.active_days) ? sched.active_days.join(', ') : ''}>
                           {Array.isArray(sched.active_days) ? sched.active_days.join(', ') : '-'}
                         </td>
-                        <td className="py-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="py-3 pl-2 text-right whitespace-nowrap align-top">
+                          <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

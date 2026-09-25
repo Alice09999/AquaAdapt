@@ -100,7 +100,7 @@ export const HardwareView: React.FC = () => {
       // Health check logs
       if (healthJson.success) {
         if (healthJson.server !== lastDataRef.current.healthServer) {
-          addLog('INFO', `API SERVER: ${healthJson.server.toUpperCase()}`, new Date(healthJson.timestamp));
+          addLog('INFO', `SERVER API: ${healthJson.server.toUpperCase()}`, new Date(healthJson.timestamp));
           lastDataRef.current.healthServer = healthJson.server;
         }
         if (healthJson.database !== lastDataRef.current.healthDatabase) {
@@ -117,7 +117,7 @@ export const HardwareView: React.FC = () => {
         if (deviceData.status !== lastDataRef.current.deviceStatus) {
           const statusMsg = deviceData.status === 'online' ? 'ONLINE' : 'OFFLINE';
           addLog(deviceData.status === 'online' ? 'INFO' : 'PERINGATAN', 
-            `DEVICE ${deviceData.device_id}: ${statusMsg}`, 
+            `PERANGKAT ${deviceData.device_id}: ${statusMsg}`, 
             deviceData.last_seen ? new Date(deviceData.last_seen) : new Date()
           );
           lastDataRef.current.deviceStatus = deviceData.status;
@@ -128,7 +128,7 @@ export const HardwareView: React.FC = () => {
           const monitor = monitorJson.data;
           if (monitor.created_at !== null && monitor.created_at !== undefined && monitor.created_at !== lastDataRef.current.pcMonitorCreatedAt) {
             const time = monitor.created_at ? new Date(monitor.created_at) : new Date();
-            addLog('INFO', `TELEMETRI UPDATE: CPU ${monitor.cpu_temp !== null ? monitor.cpu_temp + '°C' : 'N/A'} | GPU ${monitor.gpu_temp !== null ? monitor.gpu_temp + '°C' : 'N/A'} | CPU Usage ${monitor.cpu_usage !== null ? monitor.cpu_usage + '%' : 'N/A'} | RAM ${monitor.ram_usage !== null ? monitor.ram_usage + '%' : 'N/A'}`, time);
+            addLog('INFO', `PEMBARUAN TELEMETRI: CPU ${monitor.cpu_temp !== null ? monitor.cpu_temp + '°C' : 'N/A'} | GPU ${monitor.gpu_temp !== null ? monitor.gpu_temp + '°C' : 'N/A'} | Penggunaan CPU ${monitor.cpu_usage !== null ? monitor.cpu_usage + '%' : 'N/A'} | RAM ${monitor.ram_usage !== null ? monitor.ram_usage + '%' : 'N/A'}`, time);
             lastDataRef.current.pcMonitorCreatedAt = monitor.created_at;
           }
         }
@@ -137,7 +137,7 @@ export const HardwareView: React.FC = () => {
         if (statusJson.data.detection) {
           const det = statusJson.data.detection;
           if (det.detected_at !== lastDataRef.current.detectionDetectedAt) {
-            addLog('INFO', `DETECTION: ${det.status} (confidence: ${(det.confidence * 100).toFixed(1)}%)`, new Date(det.detected_at));
+            addLog('INFO', `DETEKSI: ${det.status} (keyakinan: ${(det.confidence * 100).toFixed(1)}%)`, new Date(det.detected_at));
             lastDataRef.current.detectionDetectedAt = det.detected_at;
           }
         }
@@ -147,7 +147,7 @@ export const HardwareView: React.FC = () => {
       if (feedingJson.success && feedingJson.data && feedingJson.data.length > 0) {
         const latestFeed = feedingJson.data[0];
         if (latestFeed.id !== lastDataRef.current.feedingLogId) {
-          addLog('INFO', `FEEDING EVENT: ${latestFeed.ai_decision} | Motor ${latestFeed.motor_status} | Duration: ${latestFeed.duration_seconds ?? 'N/A'}s`, new Date(latestFeed.started_at));
+          addLog('INFO', `EVENT PAKAN: ${latestFeed.ai_decision} | Motor ${latestFeed.motor_status} | Durasi: ${latestFeed.duration_seconds ?? 'N/A'}s`, new Date(latestFeed.started_at));
           lastDataRef.current.feedingLogId = latestFeed.id;
         }
       }
@@ -177,7 +177,7 @@ export const HardwareView: React.FC = () => {
   const memoryPercent = pcMonitor?.ram_usage !== null ? Math.round(pcMonitor?.ram_usage!) : null;
 
   return (
-    <div id="hardware-view" className="p-8 max-w-7xl mx-auto space-y-6">
+    <div id="hardware-view" className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-tech uppercase">
@@ -189,7 +189,7 @@ export const HardwareView: React.FC = () => {
       </div>
 
       {/* 3 Telemetry Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Card 1: JETSON NANO - CPU & GPU */}
         <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-xs flex flex-col justify-between space-y-6">
           <div className="flex items-center justify-between">
@@ -208,7 +208,7 @@ export const HardwareView: React.FC = () => {
                 SUHU CPU
               </span>
               <span className="text-2xl font-bold text-slate-900 font-mono-code">
-                {loading ? '-' : pcMonitor?.cpu_temp !== null ? `${pcMonitor.cpu_temp}°C` : 'No data'}
+                {loading ? '-' : pcMonitor?.cpu_temp !== null ? `${pcMonitor.cpu_temp}°C` : 'Tidak ada data'}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -216,15 +216,15 @@ export const HardwareView: React.FC = () => {
                 SUHU GPU
               </span>
               <span className="text-2xl font-bold text-slate-900 font-mono-code">
-                {loading ? '-' : pcMonitor?.gpu_temp !== null ? `${pcMonitor.gpu_temp}°C` : 'No data'}
+                {loading ? '-' : pcMonitor?.gpu_temp !== null ? `${pcMonitor.gpu_temp}°C` : 'Tidak ada data'}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
-                CPU USAGE
+                PENGGUNAAN CPU
               </span>
               <span className="text-2xl font-bold text-slate-900 font-mono-code">
-                {loading ? '-' : pcMonitor?.cpu_usage !== null ? `${pcMonitor.cpu_usage}%` : 'No data'}
+                {loading ? '-' : pcMonitor?.cpu_usage !== null ? `${pcMonitor.cpu_usage}%` : 'Tidak ada data'}
               </span>
             </div>
           </div>
@@ -236,7 +236,7 @@ export const HardwareView: React.FC = () => {
                 PENGGUNAAN MEMORI
               </span>
               <span className="text-slate-800 font-semibold">
-                {loading ? '-' : memoryGB !== null ? `${memoryGB} / 4.0 GB` : 'No data'}
+                {loading ? '-' : memoryGB !== null ? `${memoryGB} / 4.0 GB` : 'Tidak ada data'}
               </span>
             </div>
             <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
@@ -266,7 +266,7 @@ export const HardwareView: React.FC = () => {
                 FPS
               </span>
               <span className="text-2xl font-bold text-slate-900 font-mono-code">
-                {loading ? '-' : fps !== null ? fps : 'No data'}
+                {loading ? '-' : fps !== null ? fps : 'Tidak ada data'}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -279,10 +279,10 @@ export const HardwareView: React.FC = () => {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
-                RAM USAGE
+                PENGGUNAAN RAM
               </span>
               <span className="text-2xl font-bold text-slate-900 font-mono-code">
-                {loading ? '-' : pcMonitor?.ram_usage !== null ? `${pcMonitor.ram_usage}%` : 'No data'}
+                {loading ? '-' : pcMonitor?.ram_usage !== null ? `${pcMonitor.ram_usage}%` : 'Tidak ada data'}
               </span>
             </div>
           </div>
@@ -317,7 +317,7 @@ export const HardwareView: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
-                DEVICE
+                PERANGKAT
               </span>
               <span className="text-slate-900 font-mono-code font-semibold">
                 {device?.device_name || 'AI-001'}
@@ -325,7 +325,7 @@ export const HardwareView: React.FC = () => {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
-                DEVICE ID
+                ID PERANGKAT
               </span>
               <span className="text-slate-900 font-mono-code font-semibold">
                 {device?.device_id || 'AI-001'}
@@ -333,18 +333,18 @@ export const HardwareView: React.FC = () => {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
-                LAST SEEN
+                TERAKHIR DILIHAT
               </span>
               <span className="text-slate-700 font-mono-code text-[11px]">
-                {device?.last_seen ? new Date(device.last_seen).toLocaleString('id-ID') : 'Never'}
+                {device?.last_seen ? new Date(device.last_seen).toLocaleString('id-ID') : 'Belum Pernah'}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
-                PC MONITOR UPDATED
+                PEMBARUAN MONITOR PC
               </span>
               <span className="text-slate-700 font-mono-code text-[11px]">
-                {pcMonitor?.created_at ? new Date(pcMonitor.created_at).toLocaleString('id-ID') : 'Never'}
+                {pcMonitor?.created_at ? new Date(pcMonitor.created_at).toLocaleString('id-ID') : 'Belum Pernah'}
               </span>
             </div>
           </div>
@@ -357,7 +357,7 @@ export const HardwareView: React.FC = () => {
               </span>
               <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
                 <CheckCircle className="w-3.5 h-3.5" />
-                Connected
+                Terhubung
               </span>
             </div>
             <div className="flex items-center justify-between text-xs font-mono-code">
@@ -366,7 +366,7 @@ export const HardwareView: React.FC = () => {
               </span>
               <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
                 <CheckCircle className="w-3.5 h-3.5" />
-                Running
+                Berjalan
               </span>
             </div>
             <div className="flex items-center justify-between text-xs font-mono-code">
@@ -379,12 +379,12 @@ export const HardwareView: React.FC = () => {
                 {pcMonitor ? (
                   <>
                     <CheckCircle className="w-3.5 h-3.5" />
-                    Active
+                    Aktif
                   </>
                 ) : (
                   <>
                     <AlertCircle className="w-3.5 h-3.5" />
-                    No Data
+                    Tidak Ada Data
                   </>
                 )}
               </span>
@@ -459,7 +459,7 @@ export const HardwareView: React.FC = () => {
               const memStr = memoryGB !== null ? `${memoryGB}/4.0GB` : 'N/A';
               const fpsStr = fps !== null ? `${fps} FPS` : 'N/A';
               const deviceStatus = device?.status === 'online' ? 'ONLINE' : 'OFFLINE';
-              response = `Jetson: ${deviceStatus} | CPU: ${cpuTempStr} | GPU: ${gpuTempStr} | CPU Usage: ${cpuUsageStr} | RAM: ${ramUsageStr} | Video: ${fpsStr} | Memori: ${memStr}`;
+              response = `Jetson: ${deviceStatus} | CPU: ${cpuTempStr} | GPU: ${gpuTempStr} | Penggunaan CPU: ${cpuUsageStr} | RAM: ${ramUsageStr} | Video: ${fpsStr} | Memori: ${memStr}`;
             } else if (trimmed.toLowerCase() === 'ping') {
               response = 'Koneksi telemetri: pong (latensi: 4ms)';
             } else if (trimmed.toLowerCase() === 'feed') {

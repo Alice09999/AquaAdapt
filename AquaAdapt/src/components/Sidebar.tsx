@@ -14,17 +14,21 @@ interface SidebarProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
   onOpenDiagnostics: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
   onOpenDiagnostics,
+  isOpen = false,
+  onClose,
 }) => {
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
     {
       id: 'overview',
-      label: 'Ringkasan',
+      label: 'DASHBOARD',
       icon: <BarChart2 className="w-4 h-4" />,
     },
     {
@@ -52,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside 
       id="aqua-sidebar" 
-      className="w-56 md:w-60 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 h-screen sticky top-0 select-none z-30"
+      className={`w-56 md:w-60 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 h-screen sticky top-0 select-none z-30 max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:transition-transform max-md:duration-200 max-md:ease-out ${isOpen ? 'max-md:translate-x-0' : 'max-md:-translate-x-full'}`}
     >
       {/* Top Section */}
       <div>
@@ -79,7 +83,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 id={`nav-item-${item.id}`}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  onClose?.();
+                }}
                 className={`relative w-full flex items-center gap-3.5 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all text-left group ${
                   isActive
                     ? 'bg-[#e0f2fe] text-[#0284c7] font-semibold'
@@ -105,7 +112,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="pt-2 border-t border-slate-100 space-y-1">
           <button
             id="btn-sidebar-diagnostics"
-            onClick={onOpenDiagnostics}
+            onClick={() => {
+              onOpenDiagnostics();
+              onClose?.();
+            }}
             className="w-full flex items-center gap-2.5 px-2 py-1.5 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded transition-colors text-left"
           >
             <Wrench className="w-3.5 h-3.5 text-slate-400" />

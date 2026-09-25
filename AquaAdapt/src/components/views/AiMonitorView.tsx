@@ -69,7 +69,7 @@ export const AiMonitorView: React.FC = () => {
         if (json.success && json.data) {
           const eventLogs: EventLogItem[] = json.data.map((log: any) => ({
             time: new Date(log.started_at).toLocaleTimeString('id-ID', { hour12: false }),
-            message: `${log.ai_decision} → Feeding → ${log.motor_status === 'ON' ? 'Feeding' : 'Full'}`,
+            message: `${log.ai_decision === 'Hungry' ? 'Lapar' : log.ai_decision === 'FULL' ? 'Kenyang' : log.ai_decision} → Pakan → ${log.motor_status === 'ON' ? 'Memberi Pakan' : 'Kenyang'}`,
             highlight: log.ai_decision === 'Hungry',
           }));
           setEvents(eventLogs);
@@ -199,9 +199,9 @@ export const AiMonitorView: React.FC = () => {
   }, []);
 
   return (
-    <div id="ai-monitor-view" className="p-8 max-w-7xl mx-auto space-y-6">
+    <div id="ai-monitor-view" className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-tech uppercase">
             SISTEM PENGAWASAN AI
@@ -224,14 +224,14 @@ export const AiMonitorView: React.FC = () => {
         {/* Left Column: Camera View */}
         <div className="lg:col-span-8 bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-md relative group aspect-[4/3] md:aspect-[16/10] flex flex-col justify-between">
           {/* Top Video Header HUD */}
-          <div className="relative z-10 bg-slate-950/80 backdrop-blur-xs px-4 py-2 flex items-center justify-between border-b border-white/10 text-white font-mono-code text-xs select-none">
+          <div className="relative z-10 bg-slate-950/80 backdrop-blur-xs px-4 py-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-white/10 text-white font-mono-code text-xs select-none">
             <span className="tracking-wider text-slate-200 font-semibold">
               KAMERA_ATAS_01 // PERMUKAAN_KOLAM_UTAMA
             </span>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               <span className="text-[11px] font-bold text-emerald-400 tracking-wider">
-                LIVE FEED
+                SIARAN LANGSUNG
               </span>
             </div>
           </div>
@@ -252,7 +252,7 @@ export const AiMonitorView: React.FC = () => {
                 {/* Header Tag */}
                 <div className="absolute -top-6 left-0 bg-[#0284c7] text-white font-mono-code text-[10px] font-bold px-2 py-0.5 tracking-wider uppercase shadow-xs flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-sky-200 animate-ping" />
-                  {detection.status === 'pakan_ada' ? 'PAKAN_TERDETEKSI : FULL' : 'PAKAN_TERDETEKSI : HABIS'}
+                  {detection.status === 'pakan_ada' ? 'PAKAN_TERDETEKSI : PENUH' : 'PAKAN_TERDETEKSI : HABIS'}
                 </div>
                 {/* Center dot */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-sky-400 rounded-full" />
@@ -266,7 +266,7 @@ export const AiMonitorView: React.FC = () => {
                 {/* Header Tag */}
                 <div className="absolute -top-6 left-0 bg-[#0284c7] text-white font-mono-code text-[10px] font-bold px-2 py-0.5 tracking-wider uppercase shadow-xs flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-sky-200 animate-ping" />
-                  {detection.status === 'pakan_ada' ? 'SEBARAN PAKAN : FULL' : 'SEBARAN PAKAN : HABIS'}
+                  {detection.status === 'pakan_ada' ? 'SEBARAN PAKAN : PENUH' : 'SEBARAN PAKAN : HABIS'}
                 </div>
                 {/* Center dot */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-sky-400 rounded-full" />
@@ -275,14 +275,14 @@ export const AiMonitorView: React.FC = () => {
           )}
 
           {/* Bottom HUD Bar */}
-          <div className="relative z-10 bg-slate-950/85 backdrop-blur-xs px-4 py-2 border-t border-white/10 flex items-center justify-between text-slate-300 font-mono-code text-[11px]">
+          <div className="relative z-10 bg-slate-950/85 backdrop-blur-xs px-4 py-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-slate-300 font-mono-code text-[11px]">
             <div className="flex items-center gap-4">
               <span className="font-bold tracking-wider text-slate-100">
-                POND A7 FEEDING ZONE
+                KOLAM A7 AREA PAKAN
               </span>
             </div>
             <div className="text-[10px] text-sky-400 uppercase tracking-widest font-semibold hidden sm:block">
-              AI ENGINE: YOLO-AQUA v8.4
+              MESIN AI: YOLO-AQUA v8.4
             </div>
           </div>
         </div>
@@ -338,7 +338,7 @@ export const AiMonitorView: React.FC = () => {
                     STATUS PAKAN KOLAM
                   </span>
                   <span className="text-[#0ea5e9] uppercase tracking-wider">
-                    {loading ? 'MEMUAT...' : detection?.status === 'pakan_ada' ? 'ADA PAKAN (TERSEDIA)' : detection?.status === 'pakan_habis' ? 'PAKAN HABIS' : 'UNKNOWN'}
+                    {loading ? 'MEMUAT...' : detection?.status === 'pakan_ada' ? 'ADA PAKAN (TERSEDIA)' : detection?.status === 'pakan_habis' ? 'PAKAN HABIS' : 'TIDAK DIKETAHUI'}
                   </span>
                 </div>
                 <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -350,7 +350,7 @@ export const AiMonitorView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between pb-1.5 font-semibold">
                   <span className="text-slate-700 tracking-wider uppercase text-[11px]">
-                    CONFIDENCE
+                    TINGKAT KEPERCAYAAN
                   </span>
                   <span className="text-[#0ea5e9] uppercase tracking-wider">
                     {loading ? '-' : detection ? `${Math.round(detection.confidence * 100)}%` : 'N/A'}
@@ -365,7 +365,7 @@ export const AiMonitorView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between pb-1.5 font-semibold">
                   <span className="text-slate-700 tracking-wider uppercase text-[11px]">
-                    DEVICE STATUS
+                    STATUS PERANGKAT
                   </span>
                   <span className={`uppercase tracking-wider ${device?.status === 'online' ? 'text-emerald-500' : 'text-red-500'}`}>
                     {loading ? 'MEMUAT...' : device?.status === 'online' ? 'ONLINE' : 'OFFLINE'}
@@ -383,7 +383,7 @@ export const AiMonitorView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between pb-1.5 font-semibold">
                   <span className="text-slate-700 tracking-wider uppercase text-[11px]">
-                    LAST DETECTION
+                    TERAKHIR DETEKSI
                   </span>
                   <span className="text-[#0ea5e9] uppercase tracking-wider text-[11px]">
                     {loading ? '-' : detection ? new Date(detection.detected_at).toLocaleTimeString('id-ID', { hour12: false }) : 'N/A'}

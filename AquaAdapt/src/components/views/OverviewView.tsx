@@ -135,7 +135,7 @@ export const OverviewView: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const kondisiIkan = detection?.status === 'pakan_ada' ? 'FULL' : detection?.status === 'pakan_habis' ? 'Hungry' : '-';
+  const kondisiIkan = detection?.status === 'pakan_ada' ? 'KENYANG' : detection?.status === 'pakan_habis' ? 'LAPAR' : '-';
   const keputusanAI = detection?.status === 'pakan_ada' ? 'Hentikan pemberian pakan' : detection?.status === 'pakan_habis' ? 'Mulai pemberian pakan' : '-';
   const isDeviceOnline = device?.status === 'online';
 
@@ -154,7 +154,7 @@ export const OverviewView: React.FC = () => {
   const nextSchedule = todaySchedules.find((s) => s.feeding_time > nowHHMM);
 
   const lastLog = feedingLogs.length > 0 ? feedingLogs[0] : null;
-  const statusFeeder = lastLog?.motor_status === 'ON' ? 'FEEDING' : 'STANDBY';
+  const statusFeeder = lastLog?.motor_status === 'ON' ? 'MEMBERI PAKAN' : 'SIAGA';
 
   const lastLogTime = lastLog ? new Date(lastLog.started_at) : null;
   const isRecentlyActive = lastLogTime ? (now.getTime() - lastLogTime.getTime()) < 15 * 60 * 1000 : false;
@@ -172,7 +172,7 @@ export const OverviewView: React.FC = () => {
   const maxHeightPx = 192;
 
   return (
-    <div id="overview-view" className="p-8 max-w-7xl mx-auto space-y-6">
+    <div id="overview-view" className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -180,7 +180,7 @@ export const OverviewView: React.FC = () => {
             AquaAdapt
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Smart Feeding Monitoring System
+            Sistem Pemantauan Pakan Pintar
           </p>
         </div>
 
@@ -196,7 +196,7 @@ export const OverviewView: React.FC = () => {
       </div>
 
       {/* Top 3 Metric Cards */}
-      <div className="bg-slate-100/70 border border-slate-200/80 rounded-md grid grid-cols-3 divide-x divide-slate-200/80 overflow-hidden shadow-xs">
+      <div className="bg-slate-100/70 border border-slate-200/80 rounded-md grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80 overflow-hidden shadow-xs">
         {/* Metric 1 */}
         <div className="p-6 text-center">
           <p className="text-[11px] font-bold tracking-wider text-slate-500 uppercase">
@@ -210,7 +210,7 @@ export const OverviewView: React.FC = () => {
         {/* Metric 2 */}
         <div className="p-6 text-center">
           <p className="text-[11px] font-bold tracking-wider text-slate-500 uppercase">
-            STATUS FEEDER
+            STATUS PEMBERI PAKAN
           </p>
           <p className="text-3xl font-extrabold text-slate-900 mt-2 font-tech">
             {loading ? '-' : statusFeeder}
@@ -231,14 +231,14 @@ export const OverviewView: React.FC = () => {
       {/* AI DETECTION banner container */}
       <div className="bg-[#e5e7eb] rounded-lg p-3 pt-3.5 space-y-2 border border-slate-300/60 shadow-xs">
         <p className="text-[11px] font-bold tracking-widest text-slate-600 uppercase px-2 font-mono-code">
-          AI DETECTION
+          DETEKSI AI
         </p>
-        <div className="bg-white rounded-md p-4 flex items-center justify-between shadow-xs border border-slate-200/60">
-          <div className="flex items-center gap-6">
+        <div className="bg-white rounded-md p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-6 shadow-xs border border-slate-200/60">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
             <span className="text-sm text-slate-600 font-medium">Kondisi Ikan</span>
             <span className="text-lg font-bold text-slate-900">{loading ? '-' : kondisiIkan}</span>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
             <span className="text-sm text-slate-600 font-medium">Keputusan AI</span>
             <span className="text-lg font-bold text-[#0284c7]">{loading ? '-' : keputusanAI}</span>
           </div>
@@ -268,7 +268,7 @@ export const OverviewView: React.FC = () => {
                 return (
                   <div key={log.id} className="flex items-center gap-6 font-mono-code text-[13px]">
                     <span className="font-semibold text-slate-900 w-12">{hh}.{mm}</span>
-                    <span className="text-slate-700">{log.ai_decision} → Feeding → {log.motor_status === 'ON' ? 'Feeding' : 'Full'}</span>
+                    <span className="text-slate-700">{log.ai_decision === 'Hungry' ? 'Lapar' : log.ai_decision === 'FULL' ? 'Kenyang' : log.ai_decision} → Pakan → {log.motor_status === 'ON' ? 'Memberi Pakan' : 'Kenyang'}</span>
                   </div>
                 );
               })
@@ -327,7 +327,7 @@ export const OverviewView: React.FC = () => {
           </div>
 
           {/* Graph Grid */}
-          <div className="flex items-end gap-3 h-48 border-l border-b border-slate-300/80 ml-6 pl-4 relative">
+          <div className="flex items-end gap-1.5 sm:gap-3 h-48 border-l border-b border-slate-300/80 ml-6 pl-4 relative">
             {/* Horizontal Grid Ticks */}
             <div className="absolute left-[-24px] top-0 text-[10px] text-slate-500 font-mono-code">{maxBarCount}</div>
             <div className="absolute left-[-24px] top-1/2 -translate-y-1/2 text-[10px] text-slate-500 font-mono-code">{Math.ceil(maxBarCount / 2)}</div>
@@ -345,14 +345,14 @@ export const OverviewView: React.FC = () => {
                 <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full group">
                   {barHeight > 0 ? (
                     <div
-                      className="w-8 bg-slate-950 rounded-xs transition-all hover:bg-slate-800 cursor-pointer shadow-xs"
+                      className="w-5 sm:w-8 bg-slate-950 rounded-xs transition-all hover:bg-slate-800 cursor-pointer shadow-xs"
                       style={{ height: `${barHeight}px` }}
                       title={`${item.day}: ${item.count} aktivitas`}
                     />
                   ) : (
                     <div className="w-8 h-0" />
                   )}
-                  <span className="text-[11px] text-slate-600 mt-3 group-hover:text-slate-900 transition-colors">
+                  <span className="text-[10px] sm:text-[11px] text-slate-600 mt-3 group-hover:text-slate-900 transition-colors">
                     {item.day}
                   </span>
                 </div>
@@ -362,18 +362,18 @@ export const OverviewView: React.FC = () => {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-6 pt-3 text-[11px] text-slate-600 border-t border-slate-100">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-3 text-[11px] text-slate-600 border-t border-slate-100">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-slate-900 inline-block" />
             <span>Pemberian pakan</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block" />
-            <span>Deteksi Hungry</span>
+            <span>Deteksi Lapar</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block" />
-            <span>Deteksi Full</span>
+            <span>Deteksi Kenyang</span>
           </div>
         </div>
       </div>
@@ -391,27 +391,27 @@ export const OverviewView: React.FC = () => {
                 <span className={`w-2 h-2 rounded-full ${isDeviceOnline ? 'bg-sky-500' : 'bg-slate-400'}`} />
                 <span className="text-slate-800">{device?.device_name || 'Kamera'}</span>
               </div>
-              <span className="text-slate-600 font-medium">{isDeviceOnline ? 'Online' : 'Offline'}</span>
+              <span className="text-slate-600 font-medium">{isDeviceOnline ? 'ONLINE' : 'OFFLINE'}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span className={`w-2 h-2 rounded-full ${isDeviceOnline ? 'bg-sky-500' : 'bg-slate-400'}`} />
                 <span className="text-slate-800">Jetson Nano</span>
               </div>
-              <span className="text-slate-600 font-medium">{isDeviceOnline ? 'Connected' : 'Disconnected'}</span>
+              <span className="text-slate-600 font-medium">{isDeviceOnline ? 'Terhubung' : 'Terputus'}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span className={`w-2 h-2 rounded-full ${lastLog?.motor_status === 'ON' ? 'bg-sky-500' : 'border border-slate-400 bg-transparent'}`} />
                 <span className="text-slate-800">Motor DC</span>
               </div>
-              <span className="text-slate-600 font-medium">{lastLog?.motor_status === 'ON' ? 'Active' : 'Standby'}</span>
+              <span className="text-slate-600 font-medium">{lastLog?.motor_status === 'ON' ? 'Aktif' : 'Siaga'}</span>
             </div>
             {pcMonitor && pcMonitor.cpu_temp !== null && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <span className="w-2 h-2 rounded-full bg-sky-500" />
-                  <span className="text-slate-800">CPU Temperature</span>
+                  <span className="text-slate-800">Suhu CPU</span>
                 </div>
                 <span className="text-slate-600 font-medium font-mono-code">{pcMonitor.cpu_temp}°C</span>
               </div>
@@ -420,7 +420,7 @@ export const OverviewView: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <span className="w-2 h-2 rounded-full bg-sky-500" />
-                  <span className="text-slate-800">GPU Temperature</span>
+                  <span className="text-slate-800">Suhu GPU</span>
                 </div>
                 <span className="text-slate-600 font-medium font-mono-code">{pcMonitor.gpu_temp}°C</span>
               </div>
@@ -437,32 +437,32 @@ export const OverviewView: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span className={`w-2 h-2 rounded-full ${isDeviceOnline ? 'bg-sky-500' : 'bg-slate-400'}`} />
-                <span className="text-slate-800">Network</span>
+                <span className="text-slate-800">Jaringan</span>
               </div>
-              <span className="text-slate-600 font-medium">{isDeviceOnline ? 'Connected' : 'Disconnected'}</span>
+              <span className="text-slate-600 font-medium">{isDeviceOnline ? 'Terhubung' : 'Terputus'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-800">Status IoT</span>
               <div className="flex items-center gap-1.5">
                 <span className={`w-2 h-2 rounded-full ${isDeviceOnline ? 'bg-sky-500' : 'bg-slate-400'}`} />
-                <span className="text-slate-600 font-medium">{isDeviceOnline ? 'Active' : 'Inactive'}</span>
+                <span className="text-slate-600 font-medium">{isDeviceOnline ? 'Aktif' : 'Tidak Aktif'}</span>
               </div>
             </div>
             {device && device.last_seen && (
               <div className="flex items-center justify-between">
-                <span className="text-slate-800">Last Seen</span>
+                <span className="text-slate-800">Terakhir Dilihat</span>
                 <span className="text-slate-600 font-medium font-mono-code text-[11px]">{device.last_seen}</span>
               </div>
             )}
             {pcMonitor && pcMonitor.cpu_usage !== null && (
               <div className="flex items-center justify-between">
-                <span className="text-slate-800">CPU Usage</span>
+                <span className="text-slate-800">Penggunaan CPU</span>
                 <span className="text-slate-600 font-medium font-mono-code">{pcMonitor.cpu_usage}%</span>
               </div>
             )}
             {pcMonitor && pcMonitor.ram_usage !== null && (
               <div className="flex items-center justify-between">
-                <span className="text-slate-800">RAM Usage</span>
+                <span className="text-slate-800">Penggunaan RAM</span>
                 <span className="text-slate-600 font-medium font-mono-code">{pcMonitor.ram_usage}%</span>
               </div>
             )}

@@ -101,8 +101,8 @@ export const NotificationsDrawer: React.FC<NotificationsDrawerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs">
-      <div className="bg-white w-full max-w-sm h-full shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-200">
-        <div>
+      <div className="bg-white w-full max-w-sm h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+        <div className="flex flex-col min-h-0 flex-1">
           {/* Header */}
           <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
             <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export const NotificationsDrawer: React.FC<NotificationsDrawerProps> = ({
           </div>
 
           {/* List */}
-          <div className="p-4 space-y-3 flex-1 overflow-y-auto">
+          <div className="p-4 space-y-3 flex-1 min-h-0 overflow-y-auto">
             {loading && (
               <div className="flex items-center justify-center py-8 gap-2 text-slate-500">
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -178,7 +178,7 @@ export const NotificationsDrawer: React.FC<NotificationsDrawerProps> = ({
           </div>
         </div>
 
-        <div className="p-4 border-t border-slate-200 bg-slate-50">
+        <div className="p-4 border-t border-slate-200 bg-slate-50 shrink-0">
           <button
             onClick={onClose}
             className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-bold uppercase tracking-wider"

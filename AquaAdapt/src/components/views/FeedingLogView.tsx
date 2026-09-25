@@ -89,8 +89,8 @@ export const FeedingLogView: React.FC = () => {
 
   // Filtering (status only, date is handled by API)
   const filteredRecords = allRecords.filter((rec) => {
-    if (statusFilter === 'Hanya ON (Hungry)') return rec.motor_status === 'ON';
-    if (statusFilter === 'Hanya OFF (FULL)') return rec.motor_status === 'OFF';
+    if (statusFilter === 'Hanya ON (Lapar)') return rec.motor_status === 'ON';
+    if (statusFilter === 'Hanya OFF (Kenyang)') return rec.motor_status === 'OFF';
     return true;
   });
 
@@ -120,7 +120,7 @@ export const FeedingLogView: React.FC = () => {
   };
 
   return (
-    <div id="feeding-log-view" className="p-8 max-w-7xl mx-auto space-y-6">
+    <div id="feeding-log-view" className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-mono-code uppercase">
@@ -193,8 +193,8 @@ export const FeedingLogView: React.FC = () => {
                 className="appearance-none bg-white border border-slate-200/90 rounded-md py-2 pl-3 pr-10 text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-sky-500 cursor-pointer"
               >
                 <option value="Semua Catatan">Semua Catatan</option>
-                <option value="Hanya ON (Hungry)">Hanya ON (Hungry)</option>
-                <option value="Hanya OFF (FULL)">Hanya OFF (FULL)</option>
+                <option value="Hanya ON (Lapar)">Hanya ON (Lapar)</option>
+                <option value="Hanya OFF (Kenyang)">Hanya OFF (Kenyang)</option>
               </select>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
@@ -309,7 +309,7 @@ export const FeedingLogView: React.FC = () => {
       )}
 
       {/* Main Table */}
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-xs">
+      <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto shadow-xs">
         {/* Loading State */}
         {loading && (
           <div className="flex items-center justify-center py-16 gap-3 text-slate-500">
@@ -343,7 +343,7 @@ export const FeedingLogView: React.FC = () => {
         {/* Data Table */}
         {!loading && !error && allRecords.length > 0 && (
           <>
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[440px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/40 text-[11px] font-bold text-slate-700 uppercase tracking-wider font-mono-code">
                   <th className="py-3.5 px-6">TANGGAL / WAKTU (WIB)</th>
@@ -379,7 +379,7 @@ export const FeedingLogView: React.FC = () => {
             </table>
 
             {/* Table Footer / Pagination */}
-            <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-mono-code bg-slate-50/30">
+            <div className="px-4 sm:px-6 py-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 font-mono-code bg-slate-50/30">
               <span>
                 Menampilkan {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredRecords.length)} dari {filteredRecords.length} data
               </span>
