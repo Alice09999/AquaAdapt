@@ -164,7 +164,7 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
                               left: `${i * 25}%`,
                               width: '20%'
                             }}
-                            title={`Waktu: ${sched.feeding_time}`}
+                            title={`Waktu: ${sched.feeding_time.slice(0, 5)}`}
                           >
                             {sched.feeding_time.slice(0, 5)}
                           </div>

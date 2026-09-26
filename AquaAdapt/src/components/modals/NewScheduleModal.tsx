@@ -8,7 +8,7 @@ interface NewScheduleModalProps {
   onScheduleCreated: () => void;
 }
 
-const ALLOWED_TIMES = ['07:00', '17:00'];
+const TIME_PATTERN = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 
 export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
   isOpen,
@@ -34,8 +34,8 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!ALLOWED_TIMES.includes(time)) {
-      setSubmitError('Waktu pemberian hanya boleh 07:00 atau 17:00.');
+    if (!TIME_PATTERN.test(time)) {
+      setSubmitError('Waktu pemberian tidak valid.');
       return;
     }
 
@@ -106,19 +106,17 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
             <label className="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono-code">
               WAKTU PEMBERIAN (WIB)
             </label>
-            <select
+            <input
               id="select-new-schedule-time"
+              type="time"
+              lang="en-GB"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-md py-2 px-3 text-sm font-mono-code font-bold text-slate-900 focus:border-sky-500 focus:outline-hidden cursor-pointer"
+              className="w-full bg-white border border-slate-300 rounded-md py-2 px-3 text-sm font-mono-code font-bold text-slate-900 focus:border-sky-500 focus:outline-hidden cursor-pointer [&::-webkit-datetime-edit-ampm-field]:hidden"
               required
-            >
-              {ALLOWED_TIMES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+            />
             <p className="text-[10px] text-slate-400 font-mono-code">
-              Hanya tersedia 07:00 (sesi pagi) atau 17:00 (sesi sore).
+              Pilih waktu pemberian bebas dalam rentang 24 jam (format HH:MM).
             </p>
           </div>
 

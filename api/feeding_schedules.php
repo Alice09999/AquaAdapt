@@ -14,11 +14,9 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
 header("Content-Type: application/json");
 
 // ======================================================
-// FIXED SCHEDULE: hanya 07:00 dan 17:00
+// FIXED SCHEDULE: feeding_time bebas 00:00 - 23:59 (HH:MM)
 // Scheduler hanya mengelola feeding_time + active_days
 // ======================================================
-
-$ALLOWED_TIMES = ["07:00", "17:00"];
 
 function normalizeTime($time) {
     return substr(trim((string)$time), 0, 5);
@@ -89,12 +87,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     $normalized = normalizeTime($feeding_time);
-    if (!in_array($normalized, $ALLOWED_TIMES, true)) {
+    if (!preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]$/', $normalized)) {
         http_response_code(400);
         echo json_encode([
             "success" => false,
-            "message" => "Invalid feeding_time. Only 07:00 or 17:00 are allowed.",
-            "allowed" => $ALLOWED_TIMES
+            "message" => "Invalid feeding_time. Use HH:MM format between 00:00 and 23:59."
         ]);
         exit;
     }
@@ -105,7 +102,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $active_days_value = $active_days;
     }
 
-    $feeding_time_db = $normalized . ":00";
+    $feeding_time_db = $normalized;
     $active_days_json = json_encode($active_days_value);
 
     $sql = "INSERT INTO feeding_schedules (feeding_time, active_days) VALUES (?, ?)";
@@ -169,17 +166,16 @@ if ($_SERVER["REQUEST_METHOD"] === "PUT") {
 
     if ($feeding_time !== null && $feeding_time !== "") {
         $normalized = normalizeTime($feeding_time);
-        if (!in_array($normalized, $ALLOWED_TIMES, true)) {
+        if (!preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]$/', $normalized)) {
             http_response_code(400);
             echo json_encode([
                 "success" => false,
-                "message" => "Invalid feeding_time. Only 07:00 or 17:00 are allowed.",
-                "allowed" => $ALLOWED_TIMES
+                "message" => "Invalid feeding_time. Use HH:MM format between 00:00 and 23:59."
             ]);
             exit;
         }
         $updates[] = "feeding_time = ?";
-        $params[] = $normalized . ":00";
+        $params[] = $normalized;
         $types .= "s";
     }
 

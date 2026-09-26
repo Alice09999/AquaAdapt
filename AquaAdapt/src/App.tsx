@@ -77,6 +77,11 @@ export default function App() {
       </div>
 
       {/* Interactive Modals */}
+      <NewScheduleModal
+        isOpen={isNewScheduleModalOpen}
+        onClose={() => setIsNewScheduleModalOpen(false)}
+        onScheduleCreated={handleScheduleCreated}
+      />
       <NotificationsDrawer
         isOpen={isNotificationsOpen}
         onClose={handleCloseNotifications}

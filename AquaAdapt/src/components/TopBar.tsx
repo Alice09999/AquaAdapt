@@ -18,7 +18,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenSidebar,
 }) => {
   const topTabs: { id: ActiveTab; label: string }[] = [
-    { id: 'overview', label: 'DASHBOARD' },
+    { id: 'overview', label: 'Dashboard' },
     { id: 'feeding-log', label: 'Riwayat' },
     { id: 'scheduler', label: 'Jadwal' },
     { id: 'hardware', label: 'Perangkat' },
